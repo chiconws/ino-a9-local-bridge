@@ -77,7 +77,7 @@ archive provides the packet framing documented in `protocol.md`.
 5. Added a capability-restricted, read-only Docker deployment and installed it
    on an always-on local host. A live soak test confirmed automatic recovery
    from a camera pause.
-6. Ran 21 tests using synthetic protocol packets and JPEG frames only. No
+6. Ran 22 tests using synthetic protocol packets and JPEG frames only. No
    captured traffic, proprietary application files, camera credentials, or
    imagery are test fixtures.
 7. Integrated the bridge with Home Assistant. Generic Camera was initially
@@ -89,6 +89,14 @@ archive provides the packet framing documented in `protocol.md`.
 8. Created a Home Assistant dashboard titled **Cameras** with a live Picture
    Entity card for that camera. Neither the setup laptop nor Linklemo is
    required for normal viewing.
+9. Migrated the bridge from an unmanaged Compose container to a TrueNAS Custom
+   App named `ino-a9-local-bridge`. Its health endpoint and live camera worker
+   remained healthy after migration.
+10. Recovered Linklemo's `FTConn.audioPlay(0)` command ID (`2614`) from the
+    native SDK and tested it directly. The camera returned success and emitted
+    unencrypted G.711 A-law audio at 8 kHz, reported as 16-bit mono. A 30-second
+    header-only probe counted 302 packets and 242,204 payload bytes; it did not
+    save or decode microphone content.
 
 ## Temporary components and cleanup
 
@@ -96,12 +104,15 @@ The quarantine access point and its bridge were removed after provisioning.
 Temporary `hostapd` and `sshpass` packages installed on the setup laptop were
 removed. The original provisioning capture and hostapd configuration were
 deleted. After bridge and Home Assistant validation, the Waydroid container,
-Linklemo APK/data, decompiler output, Frida server/client, captures, decrypted
-test buffers, cookies, and camera-specific laptop firewall rules were removed.
-Packages installed only for this work and their same-time unused dependencies
-were uninstalled. Broadcast-forwarding and user-linger settings were restored
-to their recorded pre-test values. The SSH maintenance account was retained as
-requested.
+Linklemo app data, Frida server/client, captures, decrypted test buffers,
+cookies, and camera-specific laptop firewall rules were removed. A fresh
+official Linklemo package and its decompiler output were later retained only in
+temporary local storage for the continuing audio investigation; neither is in
+this repository and both are scheduled for removal when the project is
+declared complete. Packages installed only for the first phase and their
+same-time unused dependencies were uninstalled. Broadcast-forwarding and
+user-linger settings were restored to their recorded pre-test values. The SSH
+maintenance account was retained as requested.
 
 The Home Assistant migration used a short-lived in-memory access token derived
 locally on the Home Assistant host. The helper and bytecode were deleted

@@ -21,8 +21,8 @@ Known types:
 | 7 | custom payload |
 | 8 | file transfer |
 
-The normal low nibble flag is `8`. This firmware uses flag `10` for fragmented
-live AV packets.
+The normal low nibble flag is `8`. On the tested firmware, live audio uses flag
+`9` and fragmented live video uses flag `10`.
 
 ## RPC variable header
 
@@ -55,6 +55,7 @@ encrypted padding block.
 | 106 | client → camera | connection sync; request field 1 is `1` |
 | 107 | both | time synchronization/heartbeat |
 | 2610 | client → camera | start live video; empty request |
+| 2614 | client → camera | start live audio on channel 0; empty request |
 
 `LanAuth.Req` has an omitted/default channel followed by string fields `user`
 and `pwd`. On the tested unit, `pwd` is the stable special local-salt form that
@@ -81,6 +82,20 @@ After the fixed header:
 
 Known format values include H.264 `1`, H.265 `2`, MPEG `3`, MJPEG `4`, G.711A
 `21`, G.711U variants `31`/`41`, Opus `51`, and AAC `101`.
+
+### Live-validated microphone stream
+
+Linklemo starts listening by calling `FTConn.audioPlay(0)` shortly after video
+start. Native-library analysis maps that call to PPRPC command `2614`. Channel
+zero is its protobuf default, so the request body is empty.
+
+The physical `INO-A9-V2.8` unit returned success and response values identifying
+codec `21` (G.711 A-law), 8,000 Hz, 16 reported sample bits, and one track. It
+then emitted one unencrypted type-6/flag-9 packet per audio sequence. A
+30-second header-only observation counted 302 sequences and 242,204 payload
+bytes without retaining audio. That is approximately 64.6 kbit/s of codec
+payload, consistent with ordinary G.711; TCP, PPRPC, and Wi-Fi framing add a
+small amount of overhead.
 
 The legacy AV key derivation is:
 
@@ -112,14 +127,18 @@ Ipc.connect(did, spec=0, local=true)
   -> FTConn.lanDailByDid()
 Ipc.videoPlay(channel=0, quality=0, speed=0)
   -> FTConn.videoPlay(0, 0, 0)
+Ipc.audioPlay(channel=0)
+  -> FTConn.audioPlay(0)
 CallAVPacket callbacks
 ```
 
 The independent client does not require SDK discovery or a relay URI. It opens
 a direct TCP connection to the camera's reserved address, performs commands
-2650/106/107/2610, and consumes type-6 AV packets. The camera session key was
-independently validated against both the encrypted network frame head and the
-decoded SDK callback frame during analysis.
+2650/106/107/2610, and consumes type-6 video packets. Command 2614 and the
+resulting G.711 A-law audio packets were independently live-validated as a
+separate diagnostic. The camera session key was independently validated
+against both the encrypted network frame head and the decoded SDK callback
+frame during analysis.
 
 ## What `a9-v720` does and does not provide
 

@@ -49,6 +49,35 @@ docker compose -f compose.example.yaml up -d --build
 The example container runs without Linux capabilities, has a read-only root
 filesystem, and mounts the private configuration read-only.
 
+## Run as a TrueNAS Custom App
+
+Build the image on the TrueNAS host, then create a **Custom App** named
+`ino-a9-local-bridge` with the equivalent Compose configuration. The tested
+managed app uses:
+
+```yaml
+services:
+  bridge:
+    image: local/ino-a9-local-bridge:0.2.0
+    pull_policy: never
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /mnt/pool/wificam/config/camera.json:/run/wificam/camera.json:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+```
+
+Replace `pool` with the local dataset path. This makes the service visible and
+manageable under **Apps → Installed Applications** while preserving the same
+read-only and capability-restricted container configuration.
+
 ## HTTP endpoints
 
 For a camera named `camera1`:
@@ -99,6 +128,12 @@ native MJPEG stream proxy returned complete JPEG frames.
   retries after three seconds.
 - The tested unit normally emits roughly 10 frames per second at 640×480, but
   its firmware occasionally pauses long enough to trigger that watchdog.
+- A video-only 30-second observation measured about 0.64 Mbit/s of MJPEG
+  payload. Allow roughly 0.8–1.0 Mbit/s per active camera for video plus local
+  protocol/TCP/Wi-Fi overhead; MJPEG varies with scene complexity.
+- The microphone separately produces about 64.6 kbit/s of G.711 A-law payload,
+  adding roughly 0.08 Mbit/s after local transport overhead. Audio is confirmed
+  by the diagnostic but is not exposed by the current video-only HTTP bridge.
 - Keep the camera's Internet block in place. The bridge needs only TCP access
   to camera port `20190`; Home Assistant needs only TCP access to the bridge's
   HTTP port.

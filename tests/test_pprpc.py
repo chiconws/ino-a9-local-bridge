@@ -68,6 +68,17 @@ def test_parse_live_av_flag_10() -> None:
     assert packet.payload == b"\x01\xff\x00fragment"
 
 
+def test_parse_live_audio_flag_9() -> None:
+    body = bytes([21, 0])
+    body += encode_varint(0) + encode_varint(8) + encode_varint(100) + encode_varint(0)
+    body += b"audio"
+    packet = parse_packet(b"\x69" + encode_varint(len(body)) + body, udp=False)
+    assert isinstance(packet, AVPacket)
+    assert packet.header.flag == 9
+    assert packet.media_format == 21
+    assert packet.payload == b"audio"
+
+
 def test_reject_truncated_packet() -> None:
     with pytest.raises(PacketError, match="truncated packet"):
         parse_packet(b"\x68\x10\x81\x00", udp=False)

@@ -14,7 +14,7 @@ from typing import Final
 
 UDP_MAGIC: Final = b"Qp"
 SUPPORTED_TYPES: Final = frozenset(range(3, 9))
-SUPPORTED_FLAGS: Final = frozenset((8, 10))
+SUPPORTED_FLAGS: Final = frozenset((8, 9, 10))
 MAX_VARINT_BYTES: Final = 10
 
 

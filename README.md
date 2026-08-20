@@ -36,6 +36,8 @@ publication decisions.
   live video with `videoPlay(0, 0, 0)`
 - The independent client authenticates, answers time sync, starts video, and
   receives standard 640×480 MJPEG
+- The microphone is live-validated: command `2614` starts an unencrypted local
+  G.711 A-law stream at 8 kHz, reported as 16-bit mono by the camera
 - The tested firmware occasionally pauses its output; the client treats 15
   seconds without a complete frame as a dead stream and reconnects
 - The HTTP bridge exposes snapshots and one shared multipart MJPEG stream; the
@@ -51,6 +53,7 @@ publication decisions.
 - [`docs/bridge.md`](docs/bridge.md) — deployment and Home Assistant setup
 - [`docs/protocol.md`](docs/protocol.md) — PPRPC framing and SDK findings
 - `src/wificam_bridge/` — clean-room parser, camera client, and HTTP bridge
+- `scripts/probe_media.py` — header-only live media-format diagnostic
 - `tests/` — tests using synthetic packets and frames only
 
 No APKs, firmware dumps, packet captures, Wi-Fi keys, account passwords, app
