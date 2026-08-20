@@ -107,18 +107,13 @@ select **MJPEG IP Camera**. Create the full-rate entity with:
 - MJPEG URL: `http://bridge-host:8080/camera1/stream.mjpeg`
 - Still Image URL: `http://bridge-host:8080/camera1/snapshot.jpg`
 
-Create a second MJPEG IP Camera named `INO A9 Camera 1 Preview` with:
-
-- MJPEG URL: `http://bridge-host:8080/camera1/preview.mjpeg`
-- Still Image URL: `http://bridge-host:8080/camera1/snapshot.jpg`
-
 Leave username and password empty unless an authenticating reverse proxy was
-added. Put the preview entity on a **Picture Entity** card, set **Camera view**
-to `live`, and have its tap action open the full-rate entity:
+added. Put the full-rate entity on a **Picture Entity** card and set **Camera
+view** to `live`:
 
 ```yaml
 type: picture-entity
-entity: camera.ino_a9_camera_1_preview
+entity: camera.ino_a9_camera_1
 name: Camera 1
 camera_view: live
 show_name: true
@@ -128,11 +123,17 @@ tap_action:
   entity: camera.ino_a9_camera_1
 ```
 
-Repeat the pair of entities for each camera. The preview is a continuous MJPEG
-response deliberately capped at 1 FPS, so its card normally advances once per
-second. This avoids Home Assistant's slower periodic still-image refresh while
-using about one tenth of the bridge-to-dashboard bandwidth of the tested 10 FPS
-full stream. Tapping a card opens the normal full-rate camera entity.
+Repeat for each camera. For an optional lower-bandwidth overview, create a
+second MJPEG IP Camera named `INO A9 Camera 1 Preview` using:
+
+- MJPEG URL: `http://bridge-host:8080/camera1/preview.mjpeg`
+- Still Image URL: `http://bridge-host:8080/camera1/snapshot.jpg`
+
+Point the card's `entity` at `camera.ino_a9_camera_1_preview` while leaving its
+tap action pointed at the full-rate entity. The preview is a continuous MJPEG
+response capped at 1 FPS and uses about one tenth of the bridge-to-dashboard
+bandwidth of the tested 10 FPS stream. It does not prevent pauses originating
+in the camera firmware.
 
 Use the dedicated MJPEG integration rather than putting the multipart URL in
 Generic Camera's Stream Source field. Current Home Assistant releases can route
@@ -142,9 +143,9 @@ internal RTSP source. With this HTTP-only bridge that can fail as a WebRTC
 natively.
 
 The tested deployment kept the entity ID `camera.ino_a9_camera_1` and placed
-three full-rate and three preview entities on a dashboard titled **Cameras**.
-Both Home Assistant's snapshot proxy and native MJPEG stream proxy returned
-complete JPEG frames.
+three full-rate cards on a dashboard titled **Cameras**. Three optional preview
+entities are also configured. Both Home Assistant's snapshot proxy and native
+MJPEG stream proxy returned complete JPEG frames.
 
 ## Operational notes
 
