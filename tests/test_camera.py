@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from wificam_bridge.camera import (
+    G711_ALAW_FORMAT,
     CameraClient,
     CameraCredentials,
     MJPEGReassembler,
@@ -11,6 +12,7 @@ from wificam_bridge.camera import (
     build_time_sync_response,
     decrypt_rpc_payload,
     encode_protobuf_varint,
+    extract_g711_alaw_payload,
     pack_rpc,
 )
 from wificam_bridge.crypto import aes_cbc_encrypt_unpadded
@@ -36,6 +38,22 @@ def _varint(payload: bytes, offset: int) -> tuple[int, int]:
         if byte < 0x80:
             return value, offset
     raise AssertionError("oversized test varint")
+
+
+def test_extract_g711_alaw_payload_strips_transport_prefix() -> None:
+    packet = AVPacket(
+        FixedHeader(6, 9, 0, False, 2),
+        False,
+        G711_ALAW_FORMAT,
+        0,
+        0,
+        10,
+        20,
+        0,
+        b"\x01\x00\xd5\x55",
+    )
+
+    assert extract_g711_alaw_payload(packet) == b"\xd5\x55"
 
 
 def test_rpc_encrypt_pack_parse_decrypt_round_trip() -> None:

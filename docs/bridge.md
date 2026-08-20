@@ -58,7 +58,7 @@ managed app uses:
 ```yaml
 services:
   bridge:
-    image: local/ino-a9-local-bridge:0.2.1
+    image: local/ino-a9-local-bridge:0.3.0
     pull_policy: never
     restart: unless-stopped
     ports:

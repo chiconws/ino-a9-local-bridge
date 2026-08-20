@@ -1,7 +1,7 @@
 services:
   bridge:
     build: .
-    image: local/ino-a9-local-bridge:0.2.0
+    image: local/ino-a9-local-bridge:0.3.0
     restart: unless-stopped
     ports:
       - "8080:8080"

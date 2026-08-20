@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import socket
 import string
 import time
-from typing import Iterator
+from typing import Callable, Iterator
 
 from .crypto import (
     aes_cbc_decrypt_padded,
@@ -29,11 +29,15 @@ LAN_AUTH_COMMAND = 2650
 SYNC_COMMAND = 106
 TIME_SYNC_COMMAND = 107
 VIDEO_START_COMMAND = 2610
+AUDIO_START_COMMAND = 2614
 VIDEO_MAX_QOS = 30
 AES_256_CBC = 3
 RPC_REQUEST = 0
 RPC_RESPONSE = 1
 MJPEG_FORMAT = 4
+G711_ALAW_FORMAT = 21
+G711_ALAW_SAMPLE_RATE = 8000
+G711_ALAW_TRANSPORT_PREFIX = b"\x01\x00"
 
 
 class CameraError(RuntimeError):
@@ -125,6 +129,19 @@ def decrypt_rpc_payload(packet: RPCPacket, prefix: bytes) -> bytes:
         raise CameraError(f"unsupported RPC encryption type {packet.encryption_type}")
     key = derive_rpc_key(prefix, packet.sequence, packet.command_id, packet.rpc_type)
     return aes_cbc_decrypt_padded(packet.payload, key, key[:16])
+
+
+def extract_g711_alaw_payload(packet: AVPacket) -> bytes | None:
+    """Return raw G.711 A-law bytes from a validated live-audio packet."""
+    if (
+        packet.media_format != G711_ALAW_FORMAT
+        or packet.channel != 0
+        or packet.encryption_type != 0
+        or not packet.payload.startswith(G711_ALAW_TRANSPORT_PREFIX)
+    ):
+        return None
+    payload = packet.payload[len(G711_ALAW_TRANSPORT_PREFIX) :]
+    return payload or None
 
 
 class MJPEGReassembler:
@@ -267,7 +284,25 @@ class CameraClient:
             self.close()
             raise
 
-    def frames(self) -> Iterator[bytes]:
+    def start_audio(self) -> None:
+        """Request the camera's live microphone stream on channel zero."""
+        if self._socket is None:
+            raise CameraError("camera is not connected")
+        self._send_request(4, AUDIO_START_COMMAND, b"")
+        response = self._wait_response(4, AUDIO_START_COMMAND)
+        payload = decrypt_rpc_payload(response, self.credentials.bootstrap_prefix)
+        media_format = _first_varint_field(payload, field_number=5)
+        sample_rate = _first_varint_field(payload, field_number=6)
+        if media_format != G711_ALAW_FORMAT or sample_rate != G711_ALAW_SAMPLE_RATE:
+            raise CameraError(
+                f"unsupported camera audio format {media_format} at {sample_rate} Hz"
+            )
+
+    def frames(
+        self,
+        *,
+        audio_callback: Callable[[bytes], None] | None = None,
+    ) -> Iterator[bytes]:
         if self._socket is None or self._session_prefix is None:
             raise CameraError("camera is not connected")
         reassembler = MJPEGReassembler(self._session_prefix)
@@ -283,6 +318,10 @@ class CameraClient:
                 if isinstance(packet, RPCPacket):
                     self._handle_rpc_request(packet)
                 elif isinstance(packet, AVPacket):
+                    if audio_callback is not None:
+                        audio = extract_g711_alaw_payload(packet)
+                        if audio is not None:
+                            audio_callback(audio)
                     frame = reassembler.push(packet)
                     if frame is not None:
                         frame_deadline = time.monotonic() + self.frame_timeout

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import deque
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -84,8 +85,11 @@ class CameraState:
         self.condition = threading.Condition()
         self.frame: bytes | None = None
         self.frame_id = 0
+        self.audio_chunks: deque[tuple[int, bytes]] = deque(maxlen=128)
+        self.audio_id = 0
         self.connected = False
         self.last_frame_at: float | None = None
+        self.last_audio_at: float | None = None
         self.error: str | None = None
 
     def set_connected(self, connected: bool, error: str | None = None) -> None:
@@ -103,6 +107,13 @@ class CameraState:
             self.last_frame_at = time.time()
             self.condition.notify_all()
 
+    def publish_audio(self, chunk: bytes) -> None:
+        with self.condition:
+            self.audio_id += 1
+            self.audio_chunks.append((self.audio_id, chunk))
+            self.last_audio_at = time.time()
+            self.condition.notify_all()
+
     def wait_for_frame(self, after: int, timeout: float) -> tuple[int, bytes] | None:
         deadline = time.monotonic() + timeout
         with self.condition:
@@ -113,12 +124,36 @@ class CameraState:
                 self.condition.wait(remaining)
             return self.frame_id, self.frame
 
+    def audio_cursor(self) -> int:
+        with self.condition:
+            return self.audio_id
+
+    def wait_for_audio(
+        self,
+        after: int,
+        timeout: float,
+    ) -> list[tuple[int, bytes]] | None:
+        deadline = time.monotonic() + timeout
+        with self.condition:
+            while self.audio_id <= after:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return None
+                self.condition.wait(remaining)
+            return [
+                (item_id, chunk)
+                for item_id, chunk in self.audio_chunks
+                if item_id > after
+            ]
+
     def status(self) -> dict[str, Any]:
         with self.condition:
             return {
                 "connected": self.connected,
                 "has_frame": self.frame is not None,
+                "has_audio": bool(self.audio_chunks),
                 "last_frame_at": self.last_frame_at,
+                "last_audio_at": self.last_audio_at,
                 "error": self.error,
             }
 
@@ -145,9 +180,10 @@ class CameraWorker(threading.Thread):
             try:
                 LOGGER.info("connecting camera %s at %s", self.settings.name, self.settings.host)
                 client.connect()
+                client.start_audio()
                 self.state.set_connected(True)
                 LOGGER.info("camera %s stream started", self.settings.name)
-                for frame in client.frames():
+                for frame in client.frames(audio_callback=self.state.publish_audio):
                     self.state.publish(frame)
                     if self.stop_event.is_set():
                         break
@@ -193,6 +229,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._stream(state)
         elif parts[1] == "preview.mjpeg":
             self._stream(state, minimum_interval=PREVIEW_INTERVAL_SECONDS)
+        elif parts[1] == "audio.alaw":
+            self._audio(state)
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -248,6 +286,24 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 self.wfile.write(header)
                 self.wfile.write(frame)
                 self.wfile.write(b"\r\n")
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, TimeoutError):
+            return
+
+    def _audio(self, state: CameraState) -> None:
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "audio/G711-ALAW; rate=8000; channels=1")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        audio_id = state.audio_cursor()
+        try:
+            while True:
+                chunks = state.wait_for_audio(audio_id, 15.0)
+                if chunks is None:
+                    continue
+                for audio_id, chunk in chunks:
+                    self.wfile.write(chunk)
                 self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError, TimeoutError):
             return
