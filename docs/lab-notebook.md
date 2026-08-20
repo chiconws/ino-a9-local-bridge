@@ -114,11 +114,10 @@ archive provides the packet framing documented in `protocol.md`.
     guaranteed specification.
 14. Added all three workers to the TrueNAS Custom App and all three full-rate
     MJPEG entities to Home Assistant.
-15. Added and measured a one-frame-per-second MJPEG preview endpoint, then
-    returned the Cameras dashboard to full-rate cards at the owner's
-    preference. The preview entities remain available as a low-bandwidth
-    option. Testing confirmed that longer freezes originate in the camera
-    output rather than Home Assistant's card refresh mode.
+15. Added and measured a one-frame-per-second MJPEG preview endpoint as an
+    optional low-bandwidth dashboard mode. Direct stream measurements showed
+    that longer freezes originate in the camera output rather than Home
+    Assistant's card refresh mode.
 
 ## Temporary components and cleanup
 
