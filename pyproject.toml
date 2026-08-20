@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ino-a9-local-bridge"
+version = "0.2.0"
+description = "Local-only PPRPC research and bridge tooling for INO A9 cameras"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "0BSD"}
+authors = [{name = "Ivan"}]
+dependencies = ["cryptography>=45"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+wificam-pprpc = "wificam_bridge.cli:main"
+wificam-bridge = "wificam_bridge.bridge:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wificam_bridge"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

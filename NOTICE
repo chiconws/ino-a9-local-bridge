@@ -1,0 +1,6 @@
+This project includes independently written code informed by the public PPRPC
+packet interfaces formerly published as github.com/pprpc/core, revision
+5592f694d0e7, licensed under the Apache License, Version 2.0.
+
+It also references, but does not copy, FuseTim's insecurity-camera-tools,
+licensed under the MIT License.

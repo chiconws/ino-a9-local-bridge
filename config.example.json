@@ -1,0 +1,14 @@
+{
+  "listen_host": "127.0.0.1",
+  "listen_port": 8080,
+  "cameras": [
+    {
+      "name": "camera1",
+      "host": "192.0.2.10",
+      "port": 20190,
+      "bootstrap_prefix": "replace-with-private-value",
+      "user": "replace-with-private-value",
+      "lan_password": "replace-with-private-value"
+    }
+  ]
+}
