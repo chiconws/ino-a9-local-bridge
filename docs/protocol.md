@@ -97,7 +97,9 @@ zero is its protobuf default, so the request body is empty.
 
 The physical `INO-A9-V2.8` unit returned success and response values identifying
 codec `21` (G.711 A-law), 8,000 Hz, 16 reported sample bits, and one track. It
-then emitted one unencrypted type-6/flag-9 packet per audio sequence. A
+then emitted one unencrypted type-6/flag-9 packet per audio sequence. Every
+observed packet payload was 802 bytes: a fixed `01 00` transport prefix followed
+by 800 bytes of raw G.711 A-law. The bridge strips those first two bytes. A
 30-second header-only observation counted 302 sequences and 242,204 payload
 bytes without retaining audio. That is approximately 64.6 kbit/s of codec
 payload, consistent with ordinary G.711; TCP, PPRPC, and Wi-Fi framing add a
@@ -140,11 +142,9 @@ CallAVPacket callbacks
 
 The independent client does not require SDK discovery or a relay URI. It opens
 a direct TCP connection to the camera's reserved address, performs commands
-2650/106/107/2610, and consumes type-6 video packets. Command 2614 and the
-resulting G.711 A-law audio packets were independently live-validated as a
-separate diagnostic. The camera session key was independently validated
-against both the encrypted network frame head and the decoded SDK callback
-frame during analysis.
+2650/106/107/2610/2614, and consumes type-6 video and audio packets. The camera
+session key was independently validated against both the encrypted network
+frame head and the decoded SDK callback frame during analysis.
 
 ## What `a9-v720` does and does not provide
 

@@ -9,9 +9,10 @@ PPRPC protocol on TCP port `20190`; it is **not** the older Naxclow/V720 model
 that speaks its unrelated protocol on port `6123`.
 
 > [!NOTE]
-> The direct LAN client and HTTP MJPEG bridge are live-tested on the physical
-> cameras. Three units have been provisioned locally without a Linklemo account;
-> each still requires a one-time, isolated setup process.
+> The direct LAN client, HTTP MJPEG/G.711 bridge, and audio-capable RTSP path are
+> live-tested on the physical cameras. Three units have been provisioned locally
+> without a Linklemo account; each still requires a one-time, isolated setup
+> process.
 
 ## AI-assisted development
 
@@ -41,13 +42,16 @@ publication decisions.
   at 10 FPS
 - The microphone is live-validated: command `2614` starts an unencrypted local
   G.711 A-law stream at 8 kHz, reported as 16-bit mono by the camera
-- The tested firmware occasionally pauses its output; the client treats 15
-  seconds without a complete frame as a dead stream and reconnects
-- The HTTP bridge exposes snapshots, a full-rate MJPEG stream, and a shared
-  one-frame-per-second preview; the setup laptop and Linklemo are not needed at
-  runtime
-- Three cameras, Home Assistant's native MJPEG integration, and a Cameras
-  dashboard were validated end to end
+- The tested firmware repeatedly stops its video channel while microphone data
+  continues on the same live socket; the client treats two seconds without a
+  complete frame as a dead video stream and reconnects
+- The HTTP bridge exposes snapshots, full-rate and one-frame-per-second MJPEG,
+  and raw G.711 A-law microphone audio; the setup laptop and Linklemo are not
+  needed at runtime
+- An on-demand go2rtc sidecar combines H.264 video and Opus audio for Home
+  Assistant while keeping overview cards on the native MJPEG path
+- Three cameras, Home Assistant's native MJPEG integration, audio-capable
+  opened views, and a Cameras dashboard were validated end to end
 - On two additional units, the Wi-Fi station MAC was the setup AP BSSID with
   the low bit of the final octet toggled; the DHCP lease must still be verified
 
@@ -60,6 +64,7 @@ publication decisions.
   design for a camera subnet
 - [`docs/bridge.md`](docs/bridge.md) — deployment and Home Assistant setup
 - [`docs/protocol.md`](docs/protocol.md) — PPRPC framing and SDK findings
+- [`go2rtc.example.yaml`](go2rtc.example.yaml) — audio-capable RTSP restreams
 - `src/wificam_bridge/` — clean-room parser, camera client, and HTTP bridge
 - `scripts/probe_media.py` — header-only live media-format diagnostic
 - `tests/` — tests using synthetic packets and frames only
@@ -96,6 +101,7 @@ For a configured camera named `camera1`, the default endpoints are:
 http://bridge-host:8080/camera1/snapshot.jpg
 http://bridge-host:8080/camera1/stream.mjpeg
 http://bridge-host:8080/camera1/preview.mjpeg
+http://bridge-host:8080/camera1/audio.alaw
 ```
 
 ## Similar-looking cameras

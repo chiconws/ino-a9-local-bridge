@@ -1,7 +1,7 @@
 services:
   bridge:
     build: .
-    image: local/ino-a9-local-bridge:0.3.0
+    image: local/ino-a9-local-bridge:0.3.1
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -10,6 +10,23 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  go2rtc:
+    image: alexxit/go2rtc:1.9.14
+    restart: unless-stopped
+    depends_on:
+      - bridge
+    ports:
+      - "8554:8554"
+    volumes:
+      - ./go2rtc.example.yaml:/config/go2rtc.yaml:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
     security_opt:
       - no-new-privileges:true
     cap_drop:

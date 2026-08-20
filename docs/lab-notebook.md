@@ -77,7 +77,8 @@ archive provides the packet framing documented in `protocol.md`.
 5. Added a capability-restricted, read-only Docker deployment and installed it
    on an always-on local host. A live soak test confirmed automatic recovery
    from a camera pause.
-6. Ran 25 tests using synthetic protocol packets and JPEG frames only. No
+6. Ran 27 tests using synthetic protocol packets, audio chunks, and JPEG frames
+   only. No
    captured traffic, proprietary application files, camera credentials, or
    imagery are test fixtures.
 7. Integrated the bridge with Home Assistant. Generic Camera was initially
@@ -118,6 +119,24 @@ archive provides the packet framing documented in `protocol.md`.
     optional low-bandwidth dashboard mode. Direct stream measurements showed
     that longer freezes originate in the camera output rather than Home
     Assistant's card refresh mode.
+16. Added a raw G.711 A-law HTTP endpoint backed by the same shared camera
+    session. An on-demand go2rtc sidecar transcodes MJPEG to H.264 and A-law to
+    Opus, then presents both tracks over RTSP. Cold-start probing received both
+    tracks and packet data, and three Home Assistant Generic Camera entries
+    passed stream validation. The dashboard cards keep their native MJPEG
+    entities and open the matching audio-capable entity when selected.
+17. Traced the recurring still image at the bridge health boundary. On all
+    three units the camera stopped sending complete video while G.711 audio
+    remained less than half a second old on the same TCP session. Video-only
+    operation also stopped, but later, proving audio was not the root cause.
+    Empty PPRPC heartbeat packets did not alter the behavior, and replaying
+    VideoPlay was rejected or ineffective. The bridge watchdog was reduced to
+    two seconds with a one-second retry so existing HTTP viewers recover
+    without waiting through the previous 15-second detection interval.
+    A one-second trial caused new sessions to be declared stale before their
+    first complete JPEG, so two seconds is the tested lower bound. A 90-second
+    viewer test then received 498 frames on one unchanged HTTP connection with
+    a maximum 5.61-second inter-frame gap.
 
 ## Temporary components and cleanup
 

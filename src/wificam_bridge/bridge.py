@@ -23,6 +23,7 @@ LOGGER = logging.getLogger("wificam_bridge")
 BOUNDARY = "ino-a9-frame"
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 PREVIEW_INTERVAL_SECONDS = 1.0
+RECONNECT_DELAY_SECONDS = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,7 +194,7 @@ class CameraWorker(threading.Thread):
                 LOGGER.warning("camera %s disconnected: %s", self.settings.name, message)
             finally:
                 client.close()
-            self.stop_event.wait(3.0)
+            self.stop_event.wait(RECONNECT_DELAY_SECONDS)
 
 
 class BridgeHTTPServer(ThreadingHTTPServer):

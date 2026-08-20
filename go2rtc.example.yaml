@@ -1,0 +1,24 @@
+log:
+  format: text
+  level: info
+
+api:
+  listen: ":1984"
+
+rtsp:
+  listen: ":8554"
+
+# The camera firmware can pause for more than go2rtc's default timeout.
+ffmpeg:
+  timeout: 30
+
+streams:
+  ino_a9_camera1_audio:
+    - ffmpeg:http://bridge:8080/camera1/stream.mjpeg#video=h264
+    - exec:ffmpeg -hide_banner -loglevel warning -re -f alaw -ar 8000 -ac 1 -i http://bridge:8080/camera1/audio.alaw -vn -c:a libopus -application lowdelay -ar 48000 -ac 1 -rtsp_transport tcp -f rtsp {output}
+  ino_a9_camera2_audio:
+    - ffmpeg:http://bridge:8080/camera2/stream.mjpeg#video=h264
+    - exec:ffmpeg -hide_banner -loglevel warning -re -f alaw -ar 8000 -ac 1 -i http://bridge:8080/camera2/audio.alaw -vn -c:a libopus -application lowdelay -ar 48000 -ac 1 -rtsp_transport tcp -f rtsp {output}
+  ino_a9_camera3_audio:
+    - ffmpeg:http://bridge:8080/camera3/stream.mjpeg#video=h264
+    - exec:ffmpeg -hide_banner -loglevel warning -re -f alaw -ar 8000 -ac 1 -i http://bridge:8080/camera3/audio.alaw -vn -c:a libopus -application lowdelay -ar 48000 -ac 1 -rtsp_transport tcp -f rtsp {output}

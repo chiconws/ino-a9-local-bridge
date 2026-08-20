@@ -38,6 +38,7 @@ MJPEG_FORMAT = 4
 G711_ALAW_FORMAT = 21
 G711_ALAW_SAMPLE_RATE = 8000
 G711_ALAW_TRANSPORT_PREFIX = b"\x01\x00"
+DEFAULT_FRAME_TIMEOUT_SECONDS = 2.0
 
 
 class CameraError(RuntimeError):
@@ -234,7 +235,7 @@ class CameraClient:
         *,
         port: int = 20190,
         connect_timeout: float = 5.0,
-        frame_timeout: float = 15.0,
+        frame_timeout: float = DEFAULT_FRAME_TIMEOUT_SECONDS,
     ) -> None:
         self.host = host
         self.port = port
