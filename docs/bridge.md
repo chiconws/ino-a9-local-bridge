@@ -119,7 +119,7 @@ to `live`, and have its tap action open the full-rate entity:
 ```yaml
 type: picture-entity
 entity: camera.ino_a9_camera_1_preview
-name: INO A9 Camera 1
+name: Camera 1
 camera_view: live
 show_name: true
 show_state: false
