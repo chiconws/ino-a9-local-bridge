@@ -1,0 +1,63 @@
+/*
+ * Local-only provisioning helper for the tested Linklemo INO-A9 SDK.
+ *
+ * Copy this file outside the repository, replace the two placeholders, and
+ * attach it to an authorized Linklemo process with Frida. The camera and the
+ * Android container must already be isolated from the Internet.
+ */
+
+"use strict";
+
+const targetSsid = "replace-with-private-iot-ssid";
+const targetPassword = "replace-with-private-iot-passphrase";
+
+if (targetSsid.startsWith("replace-") || targetPassword.startsWith("replace-")) {
+    throw new Error("replace the Wi-Fi placeholders in a private copy first");
+}
+
+Java.perform(function () {
+    const IpcAp = Java.use("com.xc.august.ipc.IpcAp");
+    const XCDevice = Java.use("com.xc.august.ipc.bean.XCDevice");
+    const TimeZone = Java.use("java.util.TimeZone");
+    const DateClass = Java.use("java.util.Date");
+    const instance = IpcAp.$new();
+
+    instance.initWifiAp();
+    const devices = instance.discovery.overload(
+        "java.lang.String",
+        "java.lang.String",
+        "long",
+        "java.lang.String",
+        "long"
+    ).call(instance, null, null, 5000, "192.168.9.252", 20190);
+
+    if (devices.size() !== 1) {
+        throw new Error("expected exactly one camera, found " + devices.size());
+    }
+
+    const device = Java.cast(devices.get(0), XCDevice);
+    const now = Date.now();
+    const timezone = TimeZone.getDefault();
+    const rawOffsetMinutes = Math.trunc(timezone.getRawOffset() / 60000);
+    const daylightSaving = timezone.inDaylightTime(DateClass.$new(now));
+
+    console.log("PRIVATE_DID=" + device.getDid());
+    console.log("PRIVATE_LSIGN=" + device.getLsign());
+    console.log("Keep both values private; they authorize local camera access.");
+
+    instance.addWifiApUri(
+        device.getDid(),
+        device.getIpaddr(),
+        device.getLis_port()
+    );
+    instance.apSet(
+        0,
+        targetSsid,
+        targetPassword,
+        daylightSaving,
+        now,
+        timezone.getID(),
+        rawOffsetMinutes
+    );
+    console.log("Provisioning command sent; verify DHCP and firewall state.");
+});

@@ -58,7 +58,7 @@ managed app uses:
 ```yaml
 services:
   bridge:
-    image: local/ino-a9-local-bridge:0.2.0
+    image: local/ino-a9-local-bridge:0.2.1
     pull_policy: never
     restart: unless-stopped
     ports:
@@ -84,13 +84,16 @@ For a camera named `camera1`:
 
 - `/health` — connection/frame status as JSON;
 - `/camera1/snapshot.jpg` — latest complete JPEG;
-- `/camera1/stream.mjpeg` — multipart MJPEG stream.
+- `/camera1/stream.mjpeg` — full-rate multipart MJPEG stream;
+- `/camera1/preview.mjpeg` — the same shared stream sampled at one frame per
+  second for low-bandwidth dashboards.
 
 Example:
 
 ```text
 http://bridge-host:8080/camera1/snapshot.jpg
 http://bridge-host:8080/camera1/stream.mjpeg
+http://bridge-host:8080/camera1/preview.mjpeg
 ```
 
 The bridge has no built-in HTTP authentication. Keep it on a trusted local
@@ -99,14 +102,37 @@ network, bind it to loopback, or place it behind an authenticated reverse proxy.
 ## Home Assistant
 
 In Home Assistant, open **Settings → Devices & services → Add Integration** and
-select **MJPEG IP Camera**. Set:
+select **MJPEG IP Camera**. Create the full-rate entity with:
 
 - MJPEG URL: `http://bridge-host:8080/camera1/stream.mjpeg`
 - Still Image URL: `http://bridge-host:8080/camera1/snapshot.jpg`
 
+Create a second MJPEG IP Camera named `INO A9 Camera 1 Preview` with:
+
+- MJPEG URL: `http://bridge-host:8080/camera1/preview.mjpeg`
+- Still Image URL: `http://bridge-host:8080/camera1/snapshot.jpg`
+
 Leave username and password empty unless an authenticating reverse proxy was
-added. Add the resulting camera entity to a **Picture Entity** dashboard card
-and set **Camera view** to `live`.
+added. Put the preview entity on a **Picture Entity** card, set **Camera view**
+to `live`, and have its tap action open the full-rate entity:
+
+```yaml
+type: picture-entity
+entity: camera.ino_a9_camera_1_preview
+name: INO A9 Camera 1
+camera_view: live
+show_name: true
+show_state: false
+tap_action:
+  action: more-info
+  entity: camera.ino_a9_camera_1
+```
+
+Repeat the pair of entities for each camera. The preview is a continuous MJPEG
+response deliberately capped at 1 FPS, so its card normally advances once per
+second. This avoids Home Assistant's slower periodic still-image refresh while
+using about one tenth of the bridge-to-dashboard bandwidth of the tested 10 FPS
+full stream. Tapping a card opens the normal full-rate camera entity.
 
 Use the dedicated MJPEG integration rather than putting the multipart URL in
 Generic Camera's Stream Source field. Current Home Assistant releases can route
@@ -116,8 +142,9 @@ internal RTSP source. With this HTTP-only bridge that can fail as a WebRTC
 natively.
 
 The tested deployment kept the entity ID `camera.ino_a9_camera_1` and placed
-it on a dashboard titled **Cameras**. Both Home Assistant's snapshot proxy and
-native MJPEG stream proxy returned complete JPEG frames.
+three full-rate and three preview entities on a dashboard titled **Cameras**.
+Both Home Assistant's snapshot proxy and native MJPEG stream proxy returned
+complete JPEG frames.
 
 ## Operational notes
 
@@ -131,6 +158,10 @@ native MJPEG stream proxy returned complete JPEG frames.
 - A video-only 30-second observation measured about 0.64 Mbit/s of MJPEG
   payload. Allow roughly 0.8–1.0 Mbit/s per active camera for video plus local
   protocol/TCP/Wi-Fi overhead; MJPEG varies with scene complexity.
+- A preview viewer receives about one tenth of the tested camera's video
+  payload because the bridge sends 1 of roughly 10 frames each second. This
+  reduces bridge-to-viewer traffic; it does not change the camera-to-bridge
+  Wi-Fi traffic because the shared camera connection remains full-rate.
 - The microphone separately produces about 64.6 kbit/s of G.711 A-law payload,
   adding roughly 0.08 Mbit/s after local transport overhead. Audio is confirmed
   by the diagnostic but is not exposed by the current video-only HTTP bridge.

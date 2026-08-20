@@ -18,6 +18,20 @@ Create DHCP reservations keyed by each camera's MAC address. Verify each address
 is unused before assigning it; do not rely only on a silent ping response.
 Check the DHCP lease table, ARP/NDP table, and existing reservations as well.
 
+## Setup AP BSSID and station MAC
+
+The setup access-point BSSID may differ from the MAC used after joining the IoT
+network. On two tested cameras the final octet's low bit was toggled:
+
+```text
+station_last_octet = ap_last_octet XOR 0x01
+```
+
+Use that only as a reservation hint. Verify the actual station MAC and address
+in DHCP/ARP immediately after the join. A default-deny camera VLAN is safest;
+if blocking by address instead, include the temporary DHCP pool as well as the
+reserved camera range so a mistaken MAC cannot create a brief Internet window.
+
 ## OPNsense rule model
 
 1. Create an alias such as `WIFI_CAMERAS` containing the six addresses.

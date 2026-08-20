@@ -77,7 +77,7 @@ archive provides the packet framing documented in `protocol.md`.
 5. Added a capability-restricted, read-only Docker deployment and installed it
    on an always-on local host. A live soak test confirmed automatic recovery
    from a camera pause.
-6. Ran 22 tests using synthetic protocol packets and JPEG frames only. No
+6. Ran 25 tests using synthetic protocol packets and JPEG frames only. No
    captured traffic, proprietary application files, camera credentials, or
    imagery are test fixtures.
 7. Integrated the bridge with Home Assistant. Generic Camera was initially
@@ -103,18 +103,36 @@ archive provides the packet framing documented in `protocol.md`.
     5/10 FPS/MJPEG and produced the same 640×480 dimensions, JPEG quantization
     tables, and approximate frame sizes for every value. The bridge now always
     requests maximum SDK QoS 30; this firmware clamps it to its real maximum.
+12. Provisioned two additional cameras by invoking Linklemo's local `IpcAp`
+    SDK against the explicit setup address. No Linklemo account or Internet
+    access was used. Each unit's private discovery values were independently
+    validated by authenticating and receiving a complete JPEG frame.
+13. Found that both additional cameras used a station MAC equal to the setup
+    AP BSSID with the low bit of its final octet toggled. One case incremented
+    and the other decremented the value. DHCP/ARP verification remains
+    mandatory because this is an observed device-family behavior, not a
+    guaranteed specification.
+14. Added all three workers to the TrueNAS Custom App and all three full-rate
+    MJPEG entities to Home Assistant.
+15. Added a one-frame-per-second MJPEG preview endpoint. The Cameras dashboard
+    uses the preview entities for an approximately one-second overview update;
+    tapping a card opens the corresponding full-rate entity.
 
 ## Temporary components and cleanup
 
 The quarantine access point and its bridge were removed after provisioning.
 Temporary `hostapd` and `sshpass` packages installed on the setup laptop were
 removed. The original provisioning capture and hostapd configuration were
-deleted. After bridge and Home Assistant validation, the Waydroid container,
-Linklemo app data, Frida server/client, captures, decrypted test buffers,
-cookies, and camera-specific laptop firewall rules were removed. A fresh
-official Linklemo package and its decompiler output were later retained only in
-temporary local storage for the continuing audio investigation; neither is in
-this repository and both are scheduled for removal when the project is
+deleted. After the first bridge validation, the original Waydroid container,
+Linklemo data, Frida components, captures, decrypted buffers, cookies, and
+camera-specific laptop firewall rules were removed.
+
+An isolated Waydroid/Linklemo/Frida setup was later recreated to provision the
+additional user-owned cameras. It remains isolated and is being retained
+temporarily because more cameras may still be added. The authorized APK and
+decompiler output are private local research artifacts and are not in this
+repository. They, the disposable environment, temporary firewall state, and
+private provisioning scripts are scheduled for removal when provisioning is
 declared complete. Packages installed only for the first phase and their
 same-time unused dependencies were uninstalled. Broadcast-forwarding and
 user-linger settings were restored to their recorded pre-test values. The SSH

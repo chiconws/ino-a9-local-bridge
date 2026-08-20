@@ -10,8 +10,8 @@ that speaks its unrelated protocol on port `6123`.
 
 > [!NOTE]
 > The direct LAN client and HTTP MJPEG bridge are live-tested on the physical
-> camera. Pairing additional units and extracting their private LAN credentials
-> still requires an authorized one-time setup/capture process.
+> cameras. Three units have been provisioned locally without a Linklemo account;
+> each still requires a one-time, isolated setup process.
 
 ## AI-assisted development
 
@@ -43,13 +43,18 @@ publication decisions.
   G.711 A-law stream at 8 kHz, reported as 16-bit mono by the camera
 - The tested firmware occasionally pauses its output; the client treats 15
   seconds without a complete frame as a dead stream and reconnects
-- The HTTP bridge exposes snapshots and one shared multipart MJPEG stream; the
-  setup laptop and Linklemo are not needed at runtime
-- Home Assistant's native MJPEG integration and a Cameras dashboard were
-  validated end to end
+- The HTTP bridge exposes snapshots, a full-rate MJPEG stream, and a shared
+  one-frame-per-second preview; the setup laptop and Linklemo are not needed at
+  runtime
+- Three cameras, Home Assistant's native MJPEG integration, and a Cameras
+  dashboard were validated end to end
+- On two additional units, the Wi-Fi station MAC was the setup AP BSSID with
+  the low bit of the final octet toggled; the DHCP lease must still be verified
 
 ## Repository map
 
+- [`docs/provisioning.md`](docs/provisioning.md) — repeatable isolated setup
+  procedure for additional cameras
 - [`docs/lab-notebook.md`](docs/lab-notebook.md) — redacted record of the work
 - [`docs/network-isolation.md`](docs/network-isolation.md) — DHCP and firewall
   design for a camera subnet
@@ -90,6 +95,7 @@ For a configured camera named `camera1`, the default endpoints are:
 ```text
 http://bridge-host:8080/camera1/snapshot.jpg
 http://bridge-host:8080/camera1/stream.mjpeg
+http://bridge-host:8080/camera1/preview.mjpeg
 ```
 
 ## Similar-looking cameras

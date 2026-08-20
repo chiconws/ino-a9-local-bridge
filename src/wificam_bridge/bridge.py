@@ -21,6 +21,7 @@ from .camera import CameraClient, CameraCredentials
 LOGGER = logging.getLogger("wificam_bridge")
 BOUNDARY = "ino-a9-frame"
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
+PREVIEW_INTERVAL_SECONDS = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +191,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             self._snapshot(state)
         elif parts[1] == "stream.mjpeg":
             self._stream(state)
+        elif parts[1] == "preview.mjpeg":
+            self._stream(state, minimum_interval=PREVIEW_INTERVAL_SECONDS)
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -218,19 +221,25 @@ class BridgeHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(frame)
 
-    def _stream(self, state: CameraState) -> None:
+    def _stream(self, state: CameraState, *, minimum_interval: float = 0.0) -> None:
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={BOUNDARY}")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Connection", "close")
         self.end_headers()
         frame_id = -1
+        next_frame_at = 0.0
         try:
             while True:
                 value = state.wait_for_frame(frame_id, 15.0)
                 if value is None:
                     continue
                 frame_id, frame = value
+                if minimum_interval:
+                    now = time.monotonic()
+                    if now < next_frame_at:
+                        continue
+                    next_frame_at = now + minimum_interval
                 header = (
                     f"--{BOUNDARY}\r\n"
                     "Content-Type: image/jpeg\r\n"
