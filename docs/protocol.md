@@ -54,7 +54,7 @@ encrypted padding block.
 | 2650 | client → camera | LAN authentication |
 | 106 | client → camera | connection sync; request field 1 is `1` |
 | 107 | both | time synchronization/heartbeat |
-| 2610 | client → camera | start live video; empty request |
+| 2610 | client → camera | start live video; channel/QoS/speed/format request |
 | 2614 | client → camera | start live audio on channel 0; empty request |
 
 `LanAuth.Req` has an omitted/default channel followed by string fields `user`
@@ -64,7 +64,13 @@ contains a fresh 32-byte hexadecimal `session_key`. Control RPCs continue to
 use the bootstrap prefix, while AV key derivation uses this session key.
 
 The connection must answer the camera's two initial command-107 requests before
-sending command 2610. A response echoes the request timestamp in field 1,
+sending command 2610. The bridge explicitly sends QoS `30`, the highest value
+defined by Linklemo's generic resolution selector. The tested camera accepts
+requests ranging from QoS 5 (SD) through 30 (4K) but clamps every one to its
+reported maximum of QoS 5, 10 FPS, format 4 (MJPEG). All resulting frames were
+640×480 and used identical JPEG quantization tables; the higher generic SDK
+labels do not unlock hidden resolutions on this firmware. A time-sync response
+echoes the request timestamp in field 1,
 contains signed value `-30` in field 2, and sends the bridge wall-clock time in
 milliseconds in field 3.
 

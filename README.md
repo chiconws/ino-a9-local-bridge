@@ -36,6 +36,9 @@ publication decisions.
   live video with `videoPlay(0, 0, 0)`
 - The independent client authenticates, answers time sync, starts video, and
   receives standard 640×480 MJPEG
+- The bridge requests the SDK's highest QoS on every connection. The tested
+  camera clamps all higher modes to its actual maximum: QoS 5, 640×480 MJPEG
+  at 10 FPS
 - The microphone is live-validated: command `2614` starts an unencrypted local
   G.711 A-law stream at 8 kHz, reported as 16-bit mono by the camera
 - The tested firmware occasionally pauses its output; the client treats 15

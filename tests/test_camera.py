@@ -6,6 +6,7 @@ from wificam_bridge.camera import (
     CameraClient,
     CameraCredentials,
     MJPEGReassembler,
+    VIDEO_MAX_QOS,
     build_lan_auth_request,
     build_time_sync_response,
     decrypt_rpc_payload,
@@ -69,6 +70,10 @@ def test_time_sync_response_copies_request_timestamp() -> None:
         (2, (1 << 64) - 30),
         (3, 789012),
     ]
+
+
+def test_maximum_video_qos_request() -> None:
+    assert _varints(encode_protobuf_varint(2, VIDEO_MAX_QOS)) == [(2, 30)]
 
 
 def test_mjpeg_reassembler_uses_first_fragment_metadata_and_trims_trailer() -> None:

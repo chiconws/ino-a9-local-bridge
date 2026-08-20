@@ -97,6 +97,12 @@ archive provides the packet framing documented in `protocol.md`.
     unencrypted G.711 A-law audio at 8 kHz, reported as 16-bit mono. A 30-second
     header-only probe counted 302 packets and 242,204 payload bytes; it did not
     save or decode microphone content.
+11. Recovered the SDK's video QoS command (`2612`) and tested both runtime QoS
+    changes and QoS values supplied in fresh `VideoPlay` (`2610`) requests.
+    Values 5, 10, 15, 20, 25, and 30 were accepted, but the camera reported QoS
+    5/10 FPS/MJPEG and produced the same 640×480 dimensions, JPEG quantization
+    tables, and approximate frame sizes for every value. The bridge now always
+    requests maximum SDK QoS 30; this firmware clamps it to its real maximum.
 
 ## Temporary components and cleanup
 

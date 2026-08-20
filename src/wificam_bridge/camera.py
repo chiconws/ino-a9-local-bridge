@@ -29,6 +29,7 @@ LAN_AUTH_COMMAND = 2650
 SYNC_COMMAND = 106
 TIME_SYNC_COMMAND = 107
 VIDEO_START_COMMAND = 2610
+VIDEO_MAX_QOS = 30
 AES_256_CBC = 3
 RPC_REQUEST = 0
 RPC_RESPONSE = 1
@@ -254,7 +255,13 @@ class CameraClient:
             self._wait_response(2, SYNC_COMMAND)
             self._answer_initial_time_syncs()
 
-            self._send_request(3, VIDEO_START_COMMAND, b"")
+            # Ask for the SDK's highest defined QoS. Cameras clamp this to
+            # their own maximum; the tested INO-A9 reports QoS 5 (640x480).
+            self._send_request(
+                3,
+                VIDEO_START_COMMAND,
+                encode_protobuf_varint(2, VIDEO_MAX_QOS),
+            )
             self._wait_response(3, VIDEO_START_COMMAND)
         except Exception:
             self.close()
