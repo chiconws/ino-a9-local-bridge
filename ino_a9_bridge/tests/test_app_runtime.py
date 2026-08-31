@@ -100,17 +100,22 @@ def test_prepare_runtime_applies_log_level_to_go2rtc(tmp_path: Path) -> None:
     assert "  level: warning\n" in runtime.go2rtc_config.read_text(encoding="utf-8")
 
 
-def test_register_discovery_publishes_internal_endpoints_and_token(tmp_path: Path) -> None:
+def test_register_discovery_publishes_internal_endpoints_and_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     runtime = prepare_runtime(
         _write_options(tmp_path, _options(cameras=[_camera()])), tmp_path / "data"
     )
     received: list[tuple[str, dict[str, object]]] = []
+    received_authorization: list[str | None] = []
 
     class SupervisorHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802
+            received_authorization.append(self.headers.get("Authorization"))
             self._send({"data": {"hostname": "local_ino_a9_bridge"}})
 
         def do_POST(self) -> None:  # noqa: N802
+            received_authorization.append(self.headers.get("Authorization"))
             length = int(self.headers["Content-Length"])
             received.append((self.path, json.loads(self.rfile.read(length))))
             self._send({"data": {"uuid": "test"}})
@@ -129,6 +134,7 @@ def test_register_discovery_publishes_internal_endpoints_and_token(tmp_path: Pat
     server = ThreadingHTTPServer(("127.0.0.1", 0), SupervisorHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "test-supervisor-token")
     try:
         register_discovery(runtime, f"http://127.0.0.1:{server.server_port}")
     finally:
@@ -148,6 +154,10 @@ def test_register_discovery_publishes_internal_endpoints_and_token(tmp_path: Pat
                 },
             },
         )
+    ]
+    assert received_authorization == [
+        "Bearer test-supervisor-token",
+        "Bearer test-supervisor-token",
     ]
 
 

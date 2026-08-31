@@ -13,7 +13,7 @@ authors = [{name = "Ivan"}]
 dependencies = ["cryptography==50.0.1"]
 
 [project.optional-dependencies]
-test = ["pytest==9.1.1", "PyYAML==6.0.3"]
+test = ["pytest==9.1.1", "pytest-asyncio==1.3.0", "PyYAML==6.0.3"]
 
 [project.scripts]
 wificam-pprpc = "wificam_bridge.cli:main"
@@ -25,3 +25,4 @@ packages = ["ino_a9_bridge/src/wificam_bridge"]
 [tool.pytest.ini_options]
 testpaths = ["ino_a9_bridge/tests"]
 pythonpath = ["ino_a9_bridge/src"]
+asyncio_mode = "auto"

@@ -37,22 +37,23 @@ The app generates private files below `/data` at startup:
 
 The Python bridge listens on internal port 8080. go2rtc's API is loopback-only
 on 1984, and RTSP listens on internal port 8554. No host ports are published by
-this app. The future custom integration discovers the app through Supervisor
-and consumes the private discovery token when it calls this API.
+this app. The custom integration discovers the app through Supervisor and
+consumes the private discovery token when it calls this API.
 
 ## Control API
 
 `GET /health` is an unauthenticated health check. Every `/api/v1/...` request
 requires `Authorization: Bearer <control_token>` and returns JSON only. The
-future integration uses `GET /api/v1/cameras`, `GET /api/v1/cameras/<id>`,
+The integration uses `GET /api/v1/cameras`, `GET /api/v1/cameras/<id>`,
 `PUT /api/v1/cameras/<id>/controls/<control>`, and
 `POST /api/v1/cameras/<id>/reboot`.
 
 Controls are `led` (`{"value": true}`), `night_vision`, `flip`,
 `video_quality`, and `motion` (each `{"value": "..."}`), and `intrusion`
 (`{"enabled": true, "schedule": {"days": [0], "start": "08:00", "end": "18:00"}}`).
-Days run from Sunday `0` through Saturday `6`; schedules have minute precision
-and cannot cross midnight. Camera detail responses label values as `readback`,
+Days use Home Assistant's weekday numbering, Monday `0` through Sunday `6`;
+schedules have minute precision and cannot cross midnight. Camera detail responses
+label values as `readback`,
 `persisted`, or `unknown`; night vision and flip use camera readback whenever
 the session is connected. API errors are JSON and use 400, 401, 404, 502, 503,
 or 504 without returning credentials or camera protocol data.

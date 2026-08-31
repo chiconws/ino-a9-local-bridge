@@ -5,6 +5,30 @@ authentication, answers the initial time-sync exchange, starts MJPEG video,
 reassembles the network fragments, and decrypts only the encrypted head of each
 frame. Linklemo and the setup laptop are not needed while the bridge is running.
 
+## Home Assistant app deployment
+
+The supported Home Assistant deployment is the `INO-A9 Local Bridge` app under
+[`ino_a9_bridge/`](../ino_a9_bridge/), paired with the HACS-ready integration
+under [`custom_components/ino_a9/`](../custom_components/ino_a9/).
+
+Install the app from this repository's Home Assistant app repository and add
+one camera object per physical camera. The app keeps camera credentials in its
+Supervisor-managed options, generates the private bridge/go2rtc configuration,
+and publishes its internal HTTP/RTSP endpoints through Supervisor discovery.
+After the integration is installed, discovery creates one config entry and one
+device per camera. The native entities are:
+
+- camera with JPEG snapshots and an audio-capable RTSP source;
+- status-LED and intrusion-detection switches;
+- selects for night vision, image orientation, video quality, and motion
+  sensitivity;
+- a camera reboot button.
+
+The `ino_a9.set_intrusion_schedule` service accepts a device target, enabled
+state, sorted weekdays (Monday `0` through Sunday `6`), and a non-crossing
+minute-precision time interval. Keep the camera Internet block in place; the
+app needs only local TCP access to camera port `20190`.
+
 ## Private configuration
 
 Copy `config.example.json` outside the repository and fill in the values

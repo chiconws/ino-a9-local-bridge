@@ -70,10 +70,11 @@ def prepare_runtime(options_path: str | Path, data_dir: str | Path) -> RuntimeFi
 
 
 def register_discovery(runtime: RuntimeFiles, supervisor_url: str = "http://supervisor") -> None:
-    """Publish the app endpoints to the future custom integration.
+    """Publish the app endpoints to the custom integration.
 
-    Supervisor discovery accepts these app-local endpoints without requiring the
-    Supervisor token.  The control token is sent only in the JSON request body.
+    These app-local endpoints bypass the app role permission, but Supervisor
+    still authenticates the request with the token injected into the app.
+    The camera control token is sent only in the discovery JSON body.
     """
     base_url = supervisor_url.rstrip("/")
     info = _request_json(f"{base_url}/addons/self/info")
@@ -98,7 +99,10 @@ def register_discovery(runtime: RuntimeFiles, supervisor_url: str = "http://supe
 
 def _request_json(url: str, payload: dict[str, object] | None = None) -> dict[str, Any]:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
-    request = Request(url, data=data, headers={"Content-Type": "application/json"})
+    headers = {"Content-Type": "application/json"}
+    if supervisor_token := os.environ.get("SUPERVISOR_TOKEN"):
+        headers["Authorization"] = f"Bearer {supervisor_token}"
+    request = Request(url, data=data, headers=headers)
     with urlopen(request, timeout=5) as response:  # noqa: S310 - Supervisor URL is fixed by app runtime
         result = json.loads(response.read().decode("utf-8"))
     if not isinstance(result, dict):
