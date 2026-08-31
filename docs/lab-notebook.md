@@ -140,9 +140,11 @@ archive provides the packet framing documented in `protocol.md`.
 18. On 2026-08-31, the HAOS test deployment reproduced repeated temporary
     `unavailable` entities: the two-second watchdog restarted the otherwise
     healthy PPRPC session whenever one of those measured video gaps occurred.
-    The default watchdog is now ten seconds, retaining the one-second retry for
-    genuinely stalled sessions while avoiding unnecessary Home Assistant
-    availability transitions.
+    The bridge now refreshes after ten seconds without a complete video frame,
+    even when audio continues, while any PPRPC packet resets the socket-activity
+    watchdog. Its API retains recent media availability for 15 seconds during
+    the expected reconnect window, avoiding unnecessary Home Assistant
+    availability transitions without hiding a prolonged outage.
 
 ## Temporary components and cleanup
 

@@ -204,7 +204,7 @@ class ControlAPI:
         status = camera.status()
         connected = bool(status.get("connected"))
         controls = self._control_values(camera_id)
-        if connected:
+        if connected and status.get("error") is None:
             controls["night_vision"] = self._safe_readback(
                 camera_id,
                 "night_vision",

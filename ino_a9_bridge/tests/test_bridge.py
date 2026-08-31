@@ -74,6 +74,17 @@ def test_audio_endpoint_uses_camera_state() -> None:
     handler.send_error.assert_not_called()
 
 
+def test_camera_state_stays_available_during_a_recent_reconnect() -> None:
+    state = CameraState()
+    state.publish_audio(b"audio")
+    state.set_connected(False, "ConnectionResetError: peer reset")
+
+    status = state.status()
+
+    assert status["connected"] is True
+    assert status["error"] == "ConnectionResetError: peer reset"
+
+
 def test_parse_config_rejects_duplicate_camera_names() -> None:
     config = {
         "cameras": [

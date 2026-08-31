@@ -26,6 +26,7 @@ BOUNDARY = "ino-a9-frame"
 SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 PREVIEW_INTERVAL_SECONDS = 1.0
 RECONNECT_DELAY_SECONDS = 1.0
+RECENT_ACTIVITY_GRACE_SECONDS = 15.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,8 +157,18 @@ class CameraState:
 
     def status(self) -> dict[str, Any]:
         with self.condition:
+            activity_times = [
+                timestamp
+                for timestamp in (self.last_frame_at, self.last_audio_at)
+                if timestamp is not None
+            ]
+            last_activity_at = max(activity_times, default=None)
+            recently_active = (
+                last_activity_at is not None
+                and time.time() - last_activity_at <= RECENT_ACTIVITY_GRACE_SECONDS
+            )
             return {
-                "connected": self.connected,
+                "connected": self.connected or recently_active,
                 "has_frame": self.frame is not None,
                 "has_audio": bool(self.audio_chunks),
                 "last_frame_at": self.last_frame_at,

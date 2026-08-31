@@ -43,8 +43,9 @@ publication decisions.
 - The microphone is live-validated: command `2614` starts an unencrypted local
   G.711 A-law stream at 8 kHz, reported as 16-bit mono by the camera
 - The tested firmware repeatedly stops its video channel while microphone data
-  continues on the same live socket; the client treats ten seconds without any
-  stream activity as a dead session and reconnects
+  continues on the same live socket; the client refreshes the session after ten
+  seconds without a complete video frame while still treating any stream
+  packet as socket activity
 - The HTTP bridge exposes snapshots, full-rate and one-frame-per-second MJPEG,
   and raw G.711 A-law microphone audio; the setup laptop and Linklemo are not
   needed at runtime

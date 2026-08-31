@@ -163,7 +163,7 @@ def test_camera_client_default_timeout_covers_observed_frame_gaps() -> None:
     assert client.frame_timeout >= 10.0
 
 
-def test_camera_client_keeps_video_session_alive_while_audio_arrives(monkeypatch) -> None:
+def test_camera_client_refreshes_video_session_while_audio_arrives(monkeypatch) -> None:
     client = CameraClient(
         "camera.invalid",
         CameraCredentials(b"prefix", "user", "password"),
@@ -201,7 +201,7 @@ def test_camera_client_keeps_video_session_alive_while_audio_arrives(monkeypatch
     monkeypatch.setattr("wificam_bridge.camera.time.monotonic", monotonic)
     client._receive = receive  # type: ignore[method-assign]
 
-    with pytest.raises(CameraError, match="end of test stream"):
+    with pytest.raises(TimeoutError, match="no complete frame"):
         next(client.frames(audio_callback=audio.append))
 
-    assert audio == [b"audio"] * 4
+    assert audio == [b"audio"] * 2

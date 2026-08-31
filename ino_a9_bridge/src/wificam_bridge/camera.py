@@ -331,6 +331,7 @@ class CameraClient:
             raise CameraError("camera is not connected")
         reassembler = MJPEGReassembler(self._session_prefix)
         activity_deadline = time.monotonic() + self.frame_timeout
+        frame_deadline = activity_deadline
         try:
             while self._socket is not None:
                 if self._pending:
@@ -353,10 +354,17 @@ class CameraClient:
                                 audio_callback(audio)
                         frame = reassembler.push(packet)
                         if frame is not None:
+                            frame_deadline = time.monotonic() + self.frame_timeout
                             yield frame
-                if time.monotonic() >= activity_deadline:
+                now = time.monotonic()
+                if now >= activity_deadline:
                     raise TimeoutError(
                         f"camera stream produced no activity for "
+                        f"{self.frame_timeout:g} seconds"
+                    )
+                if now >= frame_deadline:
+                    raise TimeoutError(
+                        f"camera stream produced no complete frame for "
                         f"{self.frame_timeout:g} seconds"
                     )
         finally:

@@ -256,11 +256,13 @@ Assistant config flows passed stream validation.
 - One camera connection feeds any number of local HTTP viewers; opening more
   dashboard views does not create more PPRPC sessions.
 - The worker reconnects after camera power or Wi-Fi interruptions. It also
-  declares a session stale after ten seconds without any camera stream
-  activity, then retries after one second. This tolerates the tested firmware's
-  multi-second video pauses while its microphone remains active. Existing HTTP
-  viewers remain connected and receive new frames when the camera session
-  recovers.
+  refreshes the session after ten seconds without a complete video frame, then
+  retries after one second. Audio and other PPRPC packets keep the socket's
+  activity watchdog alive during a video pause, while the frame watchdog still
+  refreshes a stalled video channel. During a short reconnect, the API keeps
+  recent media available for 15 seconds so Home Assistant entities do not
+  flap; a connection with no recent activity is eventually reported as
+  unavailable.
 - The tested units normally emit roughly 10 frames per second at 640×480, but
   their firmware repeatedly stops the video channel. A controlled trace showed
   fresh microphone packets continuing on the same socket while video was
