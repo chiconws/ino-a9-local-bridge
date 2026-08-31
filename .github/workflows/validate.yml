@@ -30,7 +30,7 @@ jobs:
           python -m pip install "ruff==0.16.5"
 
       - name: Run bridge and app tests
-        run: python -m pytest -q
+        run: python -m pytest -q ino_a9_bridge/tests -p no:homeassistant -p no:socket
 
       - name: Run integration tests
         run: python -m pytest -q tests
