@@ -7,6 +7,8 @@ from wificam_bridge.bridge import (
     BridgeHandler,
     CameraState,
     PREVIEW_INTERVAL_SECONDS,
+    build_parser,
+    parse_config,
 )
 
 
@@ -50,3 +52,37 @@ def test_audio_endpoint_uses_camera_state() -> None:
 
     handler._audio.assert_called_once_with(state)
     handler.send_error.assert_not_called()
+
+
+def test_parse_config_rejects_duplicate_camera_names() -> None:
+    config = {
+        "cameras": [
+            {
+                "name": "same",
+                "host": "192.0.2.10",
+                "bootstrap_prefix": "LLM_",
+                "user": "user",
+                "lan_password": "password",
+            },
+            {
+                "name": "same",
+                "host": "192.0.2.11",
+                "bootstrap_prefix": "LLM_",
+                "user": "user",
+                "lan_password": "password",
+            },
+        ]
+    }
+
+    try:
+        parse_config(config)
+    except ValueError as error:
+        assert "duplicate camera name" in str(error)
+    else:
+        raise AssertionError("duplicate camera names must be rejected")
+
+
+def test_bridge_parser_accepts_supervisor_log_level() -> None:
+    args = build_parser().parse_args(["--config", "config.json", "--log-level", "warning"])
+
+    assert args.log_level == "warning"

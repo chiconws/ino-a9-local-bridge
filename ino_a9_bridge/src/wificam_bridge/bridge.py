@@ -45,6 +45,11 @@ def load_config(path: str | Path) -> BridgeSettings:
     """Load a private JSON configuration file."""
     config_path = Path(path)
     raw = json.loads(config_path.read_text(encoding="utf-8"))
+    return parse_config(raw)
+
+
+def parse_config(raw: object) -> BridgeSettings:
+    """Validate a decoded bridge configuration object."""
     if not isinstance(raw, dict):
         raise ValueError("bridge config must be a JSON object")
     camera_values = raw.get("cameras")
@@ -329,6 +334,12 @@ def _port(value: object, label: str) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Expose INO-A9 cameras as local MJPEG")
     parser.add_argument("--config", required=True, help="private bridge JSON configuration")
+    parser.add_argument(
+        "--log-level",
+        choices=("debug", "info", "warning", "error"),
+        default="info",
+        help="bridge log level",
+    )
     parser.add_argument("--verbose", action="store_true", help="enable debug logging")
     return parser
 
@@ -336,7 +347,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
+        level=logging.DEBUG if args.verbose else args.log_level.upper(),
         format="%(asctime)s %(levelname)s %(message)s",
     )
     settings = load_config(args.config)

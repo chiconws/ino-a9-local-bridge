@@ -65,9 +65,10 @@ publication decisions.
 - [`docs/bridge.md`](docs/bridge.md) — deployment and Home Assistant setup
 - [`docs/protocol.md`](docs/protocol.md) — PPRPC framing and SDK findings
 - [`go2rtc.example.yaml`](go2rtc.example.yaml) — audio-capable RTSP restreams
-- `src/wificam_bridge/` — clean-room parser, camera client, and HTTP bridge
+- [`ino_a9_bridge/`](ino_a9_bridge/) — Home Assistant app build context and the
+  single clean-room parser, camera client, and HTTP bridge implementation
 - `scripts/probe_media.py` — header-only live media-format diagnostic
-- `tests/` — tests using synthetic packets and frames only
+- `ino_a9_bridge/tests/` — tests using synthetic packets and frames only
 
 No APKs, firmware dumps, packet captures, Wi-Fi keys, account passwords, app
 secrets, cookies, or camera video are stored here.
