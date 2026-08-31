@@ -17,3 +17,5 @@ config.local.json
 *.secrets.json
 captures/
 artifacts/
+specs/
+plans/

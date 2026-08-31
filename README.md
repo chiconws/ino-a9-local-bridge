@@ -64,6 +64,7 @@ publication decisions.
   design for a camera subnet
 - [`docs/bridge.md`](docs/bridge.md) — deployment and Home Assistant setup
 - [`docs/protocol.md`](docs/protocol.md) — PPRPC framing and SDK findings
+- [`docs/controls.md`](docs/controls.md) — observed camera control API
 - [`go2rtc.example.yaml`](go2rtc.example.yaml) — audio-capable RTSP restreams
 - `src/wificam_bridge/` — clean-room parser, camera client, and HTTP bridge
 - `scripts/probe_media.py` — header-only live media-format diagnostic
@@ -94,6 +95,29 @@ Run the bridge with a private configuration copied from `config.example.json`:
 ```bash
 wificam-bridge --config /private/path/camera.json
 ```
+
+## Python control API
+
+The public `CameraSession` API can stream media and apply the observed camera
+controls over the same PPRPC connection:
+
+```python
+from wificam_bridge import CameraClient, NightVisionMode
+
+# Load `credentials` from an ignored/private configuration.
+client = CameraClient("camera.lan", credentials)
+with client.open_session() as session:
+    session.start(on_frame=publish_jpeg)
+    session.wait_ready(timeout=10)
+    session.set_night_vision(NightVisionMode.AUTOMATIC)
+    session.set_status_indicator(False)
+    session.wait()
+```
+
+The credentials in this example are placeholders and must come from a private
+configuration source. See [`docs/controls.md`](docs/controls.md) for the full
+control matrix, intrusion schedules, compatibility notes, and the
+single-connection lifecycle.
 
 For a configured camera named `camera1`, the default endpoints are:
 

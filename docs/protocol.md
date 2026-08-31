@@ -57,6 +57,25 @@ encrypted padding block.
 | 2610 | client → camera | start live video; channel/QoS/speed/format request |
 | 2614 | client → camera | start live audio on channel 0; empty request |
 
+The same connection can carry the observed application settings and their
+responses. The public payload builders, typed values, and reusable session are
+documented in [`controls.md`](controls.md). The mappings are based on controlled
+observations of one INO-A9 firmware and should be treated as compatibility
+findings rather than an official protocol specification.
+
+The observed control commands are:
+
+| Command | Meaning |
+|---:|---|
+| 2612 | video-quality preset |
+| 2613 | screen orientation |
+| 2633 | status indicator |
+| 2635 / 2636 | night-vision setter / getter |
+| 2639 | intrusion detection and schedule |
+| 2647 | reboot, with no normal response |
+| 2649 | screen-orientation getter |
+| 2661 | motion-detection sensitivity |
+
 `LanAuth.Req` has an omitted/default channel followed by string fields `user`
 and `pwd`. On the tested unit, `pwd` is the stable special local-salt form that
 begins with `$L`; it is not the user's Wi-Fi or cloud password. The response

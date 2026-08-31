@@ -58,7 +58,7 @@ managed app uses:
 ```yaml
 services:
   bridge:
-    image: local/ino-a9-local-bridge:0.3.1
+    image: local/ino-a9-local-bridge:0.4.0
     pull_policy: never
     restart: unless-stopped
     ports:
@@ -218,6 +218,7 @@ Assistant config flows passed stream validation.
   declares a session stale after two seconds without a complete frame, then
   retries after one second. Existing HTTP viewers remain connected and receive
   new frames when the camera session recovers.
+
 - The tested units normally emit roughly 10 frames per second at 640×480, but
   their firmware repeatedly stops the video channel. A controlled trace showed
   fresh microphone packets continuing on the same socket while video was
@@ -245,3 +246,17 @@ Assistant config flows passed stream validation.
 - Keep the camera's Internet block in place. The bridge needs only TCP access
   to camera port `20190`; Home Assistant needs TCP access to bridge HTTP port
   `8080` and, for audio-capable views, RTSP port `8554`.
+
+## Camera controls and connection reuse
+
+Each worker uses one reusable `CameraSession` for video, audio, and control
+responses. The command-line HTTP surface remains read-only; it does not expose
+unauthenticated endpoints for changing settings or rebooting a camera.
+
+For an application that needs controls, use `CameraClient.open_session()` and
+the methods documented in [`controls.md`](controls.md). Do not start a second
+`CameraClient` for the same camera while the bridge is already streaming it.
+The control session supports the observed status LED, night vision, screen
+flip, video quality, motion sensitivity, intrusion schedule, and reboot
+commands. Control compatibility is firmware-dependent and the intrusion
+schedule setter does not have an observed readback operation.
