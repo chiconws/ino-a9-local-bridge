@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "0BSD"}
 authors = [{name = "Ivan"}]
-dependencies = ["cryptography==50.0.1"]
+dependencies = ["cryptography>=48.0.0,<51.0.0"]
 
 [project.optional-dependencies]
 test = ["pytest==9.0.3", "pytest-asyncio==1.3.0", "PyYAML==6.0.3"]
