@@ -4,10 +4,10 @@ import pytest
 
 from wificam_bridge.camera import (
     G711_ALAW_FORMAT,
+    VIDEO_MAX_QOS,
     CameraClient,
     CameraCredentials,
     MJPEGReassembler,
-    VIDEO_MAX_QOS,
     build_lan_auth_request,
     build_time_sync_response,
     decrypt_rpc_payload,
@@ -16,7 +16,13 @@ from wificam_bridge.camera import (
     pack_rpc,
 )
 from wificam_bridge.crypto import aes_cbc_encrypt_unpadded
-from wificam_bridge.pprpc import AVPacket, FixedHeader, RPCPacket, derive_av_key, parse_packet
+from wificam_bridge.pprpc import (
+    AVPacket,
+    FixedHeader,
+    RPCPacket,
+    derive_av_key,
+    parse_packet,
+)
 
 
 def _varints(payload: bytes) -> list[tuple[int, int]]:

@@ -1,5 +1,32 @@
 """Local bridge research utilities for INO A9 cameras."""
 
+from .camera import CameraClient, CameraCredentials, CameraError
+from .commands import (
+    INTRUSION_DETECTION_COMMAND,
+    MOTION_DETECTION_COMMAND,
+    NIGHT_VISION_GET_COMMAND,
+    NIGHT_VISION_SET_COMMAND,
+    REBOOT_COMMAND,
+    SCREEN_FLIP_GET_COMMAND,
+    SCREEN_FLIP_SET_COMMAND,
+    STATUS_INDICATOR_COMMAND,
+    VIDEO_QUALITY_COMMAND,
+    build_control_value_payload,
+    build_intrusion_detection_payload,
+    build_motion_detection_payload,
+    build_night_vision_payload,
+    build_screen_flip_payload,
+    build_status_indicator_payload,
+    build_video_quality_payload,
+    read_varint_field,
+)
+from .controls import (
+    IntrusionSchedule,
+    MotionDetectionSensitivity,
+    NightVisionMode,
+    ScreenFlipMode,
+    VideoQuality,
+)
 from .pprpc import (
     AVPacket,
     FixedHeader,
@@ -10,14 +37,41 @@ from .pprpc import (
     iter_tcp_packets,
     parse_packet,
 )
+from .session import CameraSession
 
 __all__ = [
     "AVPacket",
+    "CameraClient",
+    "CameraCredentials",
+    "CameraError",
+    "CameraSession",
     "FixedHeader",
+    "INTRUSION_DETECTION_COMMAND",
+    "IntrusionSchedule",
+    "MOTION_DETECTION_COMMAND",
+    "MotionDetectionSensitivity",
+    "NIGHT_VISION_GET_COMMAND",
+    "NIGHT_VISION_SET_COMMAND",
+    "NightVisionMode",
     "PacketError",
+    "REBOOT_COMMAND",
     "RPCPacket",
+    "SCREEN_FLIP_GET_COMMAND",
+    "SCREEN_FLIP_SET_COMMAND",
+    "ScreenFlipMode",
+    "STATUS_INDICATOR_COMMAND",
+    "VideoQuality",
+    "VIDEO_QUALITY_COMMAND",
+    "build_control_value_payload",
+    "build_intrusion_detection_payload",
+    "build_motion_detection_payload",
+    "build_night_vision_payload",
+    "build_screen_flip_payload",
+    "build_status_indicator_payload",
+    "build_video_quality_payload",
     "derive_av_key",
     "derive_rpc_key",
     "iter_tcp_packets",
     "parse_packet",
+    "read_varint_field",
 ]

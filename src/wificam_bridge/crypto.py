@@ -9,7 +9,6 @@ from __future__ import annotations
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.padding import PKCS7
 
-
 AES_BLOCK_SIZE = 16
 
 
@@ -26,7 +25,9 @@ def aes_cbc_decrypt_padded(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
     """Decrypt AES-CBC and validate/remove PKCS#7 padding."""
     _validate(key, iv)
     if not ciphertext or len(ciphertext) % AES_BLOCK_SIZE:
-        raise ValueError("padded AES-CBC ciphertext must be non-empty and block-aligned")
+        raise ValueError(
+            "padded AES-CBC ciphertext must be non-empty and block-aligned"
+        )
     decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
     padded = decryptor.update(ciphertext) + decryptor.finalize()
     unpadder = PKCS7(AES_BLOCK_SIZE * 8).unpadder()

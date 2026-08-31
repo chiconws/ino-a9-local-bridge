@@ -12,7 +12,10 @@ from .pprpc import PacketError, parse_packet
 
 def _jsonable(value: Any) -> Any:
     if dataclasses.is_dataclass(value):
-        return {field.name: _jsonable(getattr(value, field.name)) for field in dataclasses.fields(value)}
+        return {
+            field.name: _jsonable(getattr(value, field.name))
+            for field in dataclasses.fields(value)
+        }
     if isinstance(value, bytes):
         return {"length": len(value), "hex": value.hex()}
     return value

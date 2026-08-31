@@ -7,10 +7,9 @@ network operations and deliberately does not contain an encryption secret.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 from typing import Final
-
 
 UDP_MAGIC: Final = b"Qp"
 SUPPORTED_TYPES: Final = frozenset(range(3, 9))
@@ -61,7 +60,9 @@ class RawPacket:
     payload: bytes
 
 
-def decode_varint(data: bytes, offset: int = 0, *, max_bytes: int = MAX_VARINT_BYTES) -> tuple[int, int]:
+def decode_varint(
+    data: bytes, offset: int = 0, *, max_bytes: int = MAX_VARINT_BYTES
+) -> tuple[int, int]:
     """Decode one unsigned protobuf-style varint and return value/new offset."""
     value = 0
     for index in range(max_bytes):
@@ -87,8 +88,9 @@ def encode_varint(value: int) -> bytes:
     return bytes(output)
 
 
-
-def derive_rpc_key(prefix: str | bytes, sequence: int, command_id: int, rpc_type: int) -> bytes:
+def derive_rpc_key(
+    prefix: str | bytes, sequence: int, command_id: int, rpc_type: int
+) -> bytes:
     """Derive the legacy 32-byte ASCII-hex AES key for an RPC payload.
 
     ``prefix`` must be supplied at runtime. This repository intentionally does
@@ -99,13 +101,18 @@ def derive_rpc_key(prefix: str | bytes, sequence: int, command_id: int, rpc_type
     return hashlib.md5(prefix_bytes + suffix).hexdigest().encode()
 
 
-def derive_av_key(prefix: str | bytes, sequence: int, timestamp: int, channel: int) -> bytes:
+def derive_av_key(
+    prefix: str | bytes, sequence: int, timestamp: int, channel: int
+) -> bytes:
     """Derive the legacy 32-byte ASCII-hex AES key for an AV payload."""
     prefix_bytes = prefix.encode() if isinstance(prefix, str) else prefix
     suffix = f",AVSeq:{sequence}-TT:{timestamp}-AVChannel:{channel}".encode()
     return hashlib.md5(prefix_bytes + suffix).hexdigest().encode()
 
-def parse_fixed_header(data: bytes, *, udp: bool | None = None) -> tuple[FixedHeader, int]:
+
+def parse_fixed_header(
+    data: bytes, *, udp: bool | None = None
+) -> tuple[FixedHeader, int]:
     """Parse a PPRPC fixed header.
 
     When ``udp`` is ``None``, the ``Qp`` prefix is auto-detected. Setting it to
@@ -135,12 +142,16 @@ def parse_fixed_header(data: bytes, *, udp: bool | None = None) -> tuple[FixedHe
     return FixedHeader(message_type, flag, length, is_udp, offset), offset
 
 
-def parse_packet(data: bytes, *, udp: bool | None = None, exact: bool = True) -> RPCPacket | AVPacket | RawPacket:
+def parse_packet(
+    data: bytes, *, udp: bool | None = None, exact: bool = True
+) -> RPCPacket | AVPacket | RawPacket:
     """Parse one complete PPRPC packet without decrypting its payload."""
     header, offset = parse_fixed_header(data, udp=udp)
     end = offset + header.length
     if end > len(data):
-        raise PacketError(f"truncated packet: declared {header.length} body bytes, have {len(data) - offset}")
+        raise PacketError(
+            f"truncated packet: declared {header.length} body bytes, have {len(data) - offset}"
+        )
     if exact and end != len(data):
         raise PacketError(f"trailing data: {len(data) - end} bytes")
     body = data[offset:end]
@@ -151,8 +162,9 @@ def parse_packet(data: bytes, *, udp: bool | None = None, exact: bool = True) ->
     return RawPacket(header, body)
 
 
-
-def iter_tcp_packets(data: bytes) -> tuple[list[RPCPacket | AVPacket | RawPacket], bytes]:
+def iter_tcp_packets(
+    data: bytes,
+) -> tuple[list[RPCPacket | AVPacket | RawPacket], bytes]:
     """Parse all complete PPRPC packets from a TCP byte stream.
 
     Returns ``(packets, remainder)``. A final incomplete packet is returned as
@@ -174,6 +186,7 @@ def iter_tcp_packets(data: bytes) -> tuple[list[RPCPacket | AVPacket | RawPacket
         packets.append(parse_packet(data[offset : offset + packet_size], udp=False))
         offset += packet_size
     return packets, data[offset:]
+
 
 def _parse_rpc(header: FixedHeader, body: bytes) -> RPCPacket:
     cursor = 0

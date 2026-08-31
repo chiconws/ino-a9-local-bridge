@@ -22,7 +22,9 @@ def test_varint_round_trip(value: int) -> None:
 
 
 def test_parse_tcp_rpc_request() -> None:
-    body = encode_varint(129) + encode_varint(601) + bytes([(3 << 2) | 0]) + b"ciphertext"
+    body = (
+        encode_varint(129) + encode_varint(601) + bytes([(3 << 2) | 0]) + b"ciphertext"
+    )
     packet = parse_packet(bytes([0x48]) + encode_varint(len(body)) + body, udp=False)
     assert isinstance(packet, RPCPacket)
     assert packet.sequence == 129
@@ -45,7 +47,9 @@ def test_parse_udp_rpc_response() -> None:
 def test_parse_h264_key_frame() -> None:
     payload = b"\x00\x00\x00\x01\x65frame"
     variable = bytes([0x80 | 1, 0])
-    variable += encode_varint(0) + encode_varint(42) + encode_varint(123456) + encode_varint(0)
+    variable += (
+        encode_varint(0) + encode_varint(42) + encode_varint(123456) + encode_varint(0)
+    )
     body = variable + payload
     packet = parse_packet(b"\x68" + encode_varint(len(body)) + body, udp=False)
     assert isinstance(packet, AVPacket)
@@ -58,7 +62,9 @@ def test_parse_h264_key_frame() -> None:
 
 def test_parse_live_av_flag_10() -> None:
     body = bytes([10, 3])
-    body += encode_varint(0) + encode_varint(7) + encode_varint(99) + encode_varint(1040)
+    body += (
+        encode_varint(0) + encode_varint(7) + encode_varint(99) + encode_varint(1040)
+    )
     body += b"\x01\xff\x00fragment"
     packet = parse_packet(b"\x6a" + encode_varint(len(body)) + body, udp=False)
     assert isinstance(packet, AVPacket)

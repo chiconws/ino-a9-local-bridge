@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import argparse
+import json
+import logging
+import re
+import threading
+import time
 from collections import deque
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import json
-import logging
 from pathlib import Path
-import re
-import threading
-import time
 from typing import Any
 from urllib.parse import urlsplit
 
 from .camera import CameraClient, CameraCredentials
-
+from .session import CameraSession
 
 LOGGER = logging.getLogger("wificam_bridge")
 BOUNDARY = "ino-a9-frame"
@@ -62,7 +62,9 @@ def load_config(path: str | Path) -> BridgeSettings:
             raise ValueError(f"duplicate camera name {name!r}")
         names.add(name)
         credentials = CameraCredentials(
-            bootstrap_prefix=_required_string(value, "bootstrap_prefix").encode("utf-8"),
+            bootstrap_prefix=_required_string(value, "bootstrap_prefix").encode(
+                "utf-8"
+            ),
             user=_required_string(value, "user"),
             lan_password=_required_string(value, "lan_password"),
         )
@@ -170,6 +172,15 @@ class CameraWorker(threading.Thread):
         self.settings = settings
         self.state = state
         self.stop_event = stop_event
+        self._session_lock = threading.Lock()
+        self._session: CameraSession | None = None
+
+    @property
+    def active_session(self) -> CameraSession | None:
+        """Return the current media/control session, if connected."""
+
+        with self._session_lock:
+            return self._session
 
     def run(self) -> None:
         while not self.stop_event.is_set():
@@ -178,22 +189,31 @@ class CameraWorker(threading.Thread):
                 self.settings.credentials,
                 port=self.settings.port,
             )
+            session = CameraSession(client, start_audio=True)
+            with self._session_lock:
+                self._session = session
             try:
-                LOGGER.info("connecting camera %s at %s", self.settings.name, self.settings.host)
-                client.connect()
-                client.start_audio()
+                LOGGER.info(
+                    "connecting camera %s at %s", self.settings.name, self.settings.host
+                )
+                session.start(
+                    on_frame=self.state.publish,
+                    on_audio=self.state.publish_audio,
+                )
                 self.state.set_connected(True)
                 LOGGER.info("camera %s stream started", self.settings.name)
-                for frame in client.frames(audio_callback=self.state.publish_audio):
-                    self.state.publish(frame)
-                    if self.stop_event.is_set():
-                        break
-            except Exception as error:
+                session.wait(stop_event=self.stop_event)
+            except Exception as error:  # noqa: BLE001 - worker must reconnect
                 message = f"{type(error).__name__}: {error}"
                 self.state.set_connected(False, message)
-                LOGGER.warning("camera %s disconnected: %s", self.settings.name, message)
+                LOGGER.warning(
+                    "camera %s disconnected: %s", self.settings.name, message
+                )
             finally:
-                client.close()
+                session.close()
+                with self._session_lock:
+                    if self._session is session:
+                        self._session = None
             self.stop_event.wait(RECONNECT_DELAY_SECONDS)
 
 
@@ -262,7 +282,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _stream(self, state: CameraState, *, minimum_interval: float = 0.0) -> None:
         self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={BOUNDARY}")
+        self.send_header(
+            "Content-Type", f"multipart/x-mixed-replace; boundary={BOUNDARY}"
+        )
         self.send_header("Cache-Control", "no-store")
         self.send_header("Connection", "close")
         self.end_headers()
@@ -328,7 +350,9 @@ def _port(value: object, label: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Expose INO-A9 cameras as local MJPEG")
-    parser.add_argument("--config", required=True, help="private bridge JSON configuration")
+    parser.add_argument(
+        "--config", required=True, help="private bridge JSON configuration"
+    )
     parser.add_argument("--verbose", action="store_true", help="enable debug logging")
     return parser
 
@@ -349,7 +373,9 @@ def main(argv: list[str] | None = None) -> int:
     for worker in workers:
         worker.start()
     server = BridgeHTTPServer((settings.listen_host, settings.listen_port), states)
-    LOGGER.info("HTTP bridge listening on %s:%d", settings.listen_host, settings.listen_port)
+    LOGGER.info(
+        "HTTP bridge listening on %s:%d", settings.listen_host, settings.listen_port
+    )
     try:
         server.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:
