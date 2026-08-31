@@ -29,6 +29,20 @@ state, sorted weekdays (Monday `0` through Sunday `6`), and a non-crossing
 minute-precision time interval. Keep the camera Internet block in place; the
 app needs only local TCP access to camera port `20190`.
 
+For a published release, add this repository URL under **Settings → Add-ons →
+Add-on store → ⋮ → Repositories**, install `INO-A9 Local Bridge`, and configure
+the app there. Install the `INO-A9 Local Bridge` integration from HACS by adding
+this repository as a custom integration repository, or copy
+`custom_components/ino_a9/` into the Home Assistant `custom_components`
+directory. The app image is published for `amd64` and `aarch64` when a GitHub
+release is published. For local app development, add the repository as a local
+app source and use the Supervisor's forced rebuild command when the app has an
+`image` field:
+
+```bash
+ha apps rebuild local_ino_a9_bridge --force
+```
+
 ## Private configuration
 
 Copy `config.example.json` outside the repository and fill in the values

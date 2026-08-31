@@ -3,7 +3,8 @@ name: INO-A9 Local Bridge
 version: "0.4.0"
 slug: ino_a9_bridge
 description: Local INO-A9 camera bridge with audio-capable RTSP streams
-url: "https://github.com/IvanFogel/ino-a9-local-bridge/tree/main/ino_a9_bridge"
+url: "https://github.com/chiconws/ino-a9-local-bridge/tree/feat/home-assistant-app/ino_a9_bridge"
+image: "ghcr.io/chiconws/ino-a9-local-bridge"
 arch:
   - amd64
   - aarch64
