@@ -67,6 +67,30 @@ def test_prepare_runtime_rejects_duplicate_or_empty_camera_configuration(tmp_pat
         prepare_runtime(options_path, tmp_path / "data")
 
 
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"name": "front/door"}, "invalid camera name"),
+        ({"host": ""}, "field 'host'"),
+        ({"bootstrap_prefix": ""}, "field 'bootstrap_prefix'"),
+        ({"user": ""}, "field 'user'"),
+        ({"lan_password": ""}, "field 'lan_password'"),
+        ({"port": 0}, "camera port"),
+        ({"port": 65536}, "camera port"),
+        ({"port": "20190"}, "camera port"),
+    ],
+)
+def test_prepare_runtime_rejects_unsafe_or_incomplete_camera_fields(
+    tmp_path: Path, changes: dict[str, object], message: str
+) -> None:
+    camera = _camera()
+    camera.update(changes)
+    options_path = _write_options(tmp_path, _options(cameras=[camera]))
+
+    with pytest.raises(ValueError, match=message):
+        prepare_runtime(options_path, tmp_path / "data")
+
+
 def test_prepare_runtime_applies_log_level_to_go2rtc(tmp_path: Path) -> None:
     runtime = prepare_runtime(
         _write_options(tmp_path, _options(cameras=[_camera()], log_level="warning")),

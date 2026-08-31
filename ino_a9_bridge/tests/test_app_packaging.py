@@ -13,6 +13,7 @@ def test_app_manifest_exposes_only_internal_runtime_interfaces() -> None:
 
     assert config["slug"] == "ino_a9_bridge"
     assert config["arch"] == ["amd64", "aarch64"]
+    assert config["homeassistant"] == "2026.6.0"
     assert config["init"] is False
     assert config["discovery"] == ["ino_a9_bridge"]
     assert config.get("ports", {}) == {}

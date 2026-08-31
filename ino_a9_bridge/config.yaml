@@ -7,6 +7,7 @@ url: "https://github.com/IvanFogel/ino-a9-local-bridge/tree/main/ino_a9_bridge"
 arch:
   - amd64
   - aarch64
+homeassistant: "2026.6.0"
 init: false
 startup: application
 discovery:
