@@ -15,8 +15,9 @@ class _StreamingClient:
         self.connect_count = 0
         self.closed = threading.Event()
         self.release_first_stream = threading.Event()
-        self.control_started = threading.Event()
-        self._control_lock = threading.Lock()
+        self.control_entered = threading.Event()
+        self.release_controls = threading.Event()
+        self.control_entries = 0
         self.active_controls = 0
         self.max_active_controls = 0
         self.commands: list[tuple[int, bytes]] = []
@@ -37,13 +38,13 @@ class _StreamingClient:
         self.closed.wait(1)
 
     def send_control(self, command_id: int, payload: bytes) -> object:
-        self.control_started.set()
-        with self._control_lock:
-            self.active_controls += 1
-            self.max_active_controls = max(self.max_active_controls, self.active_controls)
-            time.sleep(0.03)
-            self.commands.append((command_id, payload))
-            self.active_controls -= 1
+        self.control_entries += 1
+        self.active_controls += 1
+        self.max_active_controls = max(self.max_active_controls, self.active_controls)
+        self.control_entered.set()
+        self.release_controls.wait(1)
+        self.commands.append((command_id, payload))
+        self.active_controls -= 1
         return object()
 
     def send_command(self, command_id: int) -> None:
@@ -68,7 +69,12 @@ def test_camera_session_reconnects_media_and_serializes_controls() -> None:
     first = threading.Thread(target=session.set_video_quality, args=("hd",))
     second = threading.Thread(target=session.set_video_quality, args=("uhd",))
     first.start()
+    assert client.control_entered.wait(1)
     second.start()
+    time.sleep(0.05)
+    assert client.control_entries == 1
+    assert client.max_active_controls == 1
+    client.release_controls.set()
     first.join()
     second.join()
     client.release_first_stream.set()

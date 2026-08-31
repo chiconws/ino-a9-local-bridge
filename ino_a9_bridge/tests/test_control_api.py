@@ -139,6 +139,74 @@ def test_state_store_discards_unknown_preexisting_values(tmp_path: Path) -> None
     }
 
 
+def test_state_store_discards_invalid_allowed_values_before_api_returns_state(tmp_path: Path) -> None:
+    path = tmp_path / "control_state.json"
+    token_path = tmp_path / "control_token"
+    token_path.write_text("test-token\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "cameras": {
+                    "front": {
+                        "led": "secret-led-value",
+                        "night_vision": "secret-night-value",
+                        "flip": "upside-down",
+                        "video_quality": "hd",
+                        "motion": ["secret-motion-value"],
+                        "intrusion": {
+                            "enabled": True,
+                            "schedule": {"days": [0, 2], "start": "08:00", "end": "17:30"},
+                            "secret": "secret-intrusion-value",
+                        },
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    camera = _Camera()
+    camera.connected = False
+    store = ControlStateStore(path, ["front"])
+
+    response = ControlAPI({"front": camera}, token_path, store).handle(
+        "GET",
+        "/api/v1/cameras/front",
+        {"Authorization": "Bearer test-token"},
+        b"",
+    )
+
+    assert response.status == 200
+    assert response.body["controls"] == {
+        "led": {"value": None, "known": False, "source": "unknown"},
+        "night_vision": {"value": None, "known": False, "source": "unknown"},
+        "flip": {"value": None, "known": False, "source": "unknown"},
+        "video_quality": {"value": "hd", "known": True, "source": "persisted"},
+        "motion": {"value": None, "known": False, "source": "unknown"},
+        "intrusion": {
+            "value": {
+                "enabled": True,
+                "schedule": {"days": [0, 2], "start": "08:00", "end": "17:30"},
+            },
+            "known": True,
+            "source": "persisted",
+        },
+    }
+    assert "secret" not in json.dumps(response.body)
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "version": 1,
+        "cameras": {
+            "front": {
+                "video_quality": "hd",
+                "intrusion": {
+                    "enabled": True,
+                    "schedule": {"days": [0, 2], "start": "08:00", "end": "17:30"},
+                },
+            }
+        },
+    }
+
+
 @pytest.mark.parametrize(
     ("method", "path", "payload", "expected_status", "code"),
     [

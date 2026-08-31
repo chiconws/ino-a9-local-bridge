@@ -34,6 +34,62 @@ class InvalidRequest(ValueError):
     pass
 
 
+def _validated_control_value(control: str, value: object) -> object:
+    if control == "led":
+        if not isinstance(value, bool):
+            raise InvalidRequest
+        return value
+    enum_values = {
+        "night_vision": NIGHT_VALUES,
+        "flip": FLIP_VALUES,
+        "video_quality": VIDEO_QUALITY_VALUES,
+        "motion": MOTION_VALUES,
+    }
+    if control in enum_values:
+        if not isinstance(value, str) or value not in enum_values[control]:
+            raise InvalidRequest
+        return value
+    if control != "intrusion" or not isinstance(value, dict):
+        raise InvalidRequest
+    enabled = value.get("enabled")
+    if not isinstance(enabled, bool):
+        raise InvalidRequest
+    schedule = _schedule_from_value(value.get("schedule"))
+    return {
+        "enabled": enabled,
+        "schedule": {
+            "days": list(schedule.days),
+            "start": schedule.start.strftime("%H:%M"),
+            "end": schedule.end.strftime("%H:%M"),
+        },
+    }
+
+
+def _schedule_from_value(value: object) -> IntrusionSchedule:
+    if not isinstance(value, dict):
+        raise InvalidRequest
+    days = value.get("days")
+    if not isinstance(days, list):
+        raise InvalidRequest
+    try:
+        return IntrusionSchedule(
+            days=tuple(days),
+            start=_clock_from_value(value.get("start")),
+            end=_clock_from_value(value.get("end")),
+        )
+    except (TypeError, ValueError) as error:
+        raise InvalidRequest from error
+
+
+def _clock_from_value(value: object):
+    if not isinstance(value, str) or len(value) != 5:
+        raise InvalidRequest
+    try:
+        return datetime.strptime(value, "%H:%M").time()
+    except ValueError as error:
+        raise InvalidRequest from error
+
+
 class ControlStateStore:
     """Atomic, non-secret state retained between app restarts."""
 
@@ -52,11 +108,17 @@ class ControlStateStore:
             camera_values = existing.get(camera_id, {})
             if not isinstance(camera_values, dict):
                 camera_values = {}
-            self._state[camera_id] = {
-                control: camera_values[control]
-                for control in PERSISTED_CONTROLS
-                if control in camera_values
-            }
+            retained: dict[str, object] = {}
+            for control in PERSISTED_CONTROLS:
+                if control not in camera_values:
+                    continue
+                try:
+                    retained[control] = _validated_control_value(
+                        control, camera_values[control]
+                    )
+                except InvalidRequest:
+                    continue
+            self._state[camera_id] = retained
         self._write()
 
     def values(self, camera_id: str) -> dict[str, object]:
@@ -65,7 +127,7 @@ class ControlStateStore:
 
     def set(self, camera_id: str, control: str, value: object) -> None:
         with self._lock:
-            self._state[camera_id][control] = value
+            self._state[camera_id][control] = _validated_control_value(control, value)
             self._write()
 
     def _write(self) -> None:
@@ -230,26 +292,11 @@ class ControlAPI:
 
     @staticmethod
     def _schedule(value: object) -> IntrusionSchedule:
-        if not isinstance(value, dict):
-            raise InvalidRequest
-        days = value.get("days")
-        start = ControlAPI._clock(value.get("start"))
-        end = ControlAPI._clock(value.get("end"))
-        if not isinstance(days, list):
-            raise InvalidRequest
-        try:
-            return IntrusionSchedule(days=tuple(days), start=start, end=end)
-        except (TypeError, ValueError) as error:
-            raise InvalidRequest from error
+        return _schedule_from_value(value)
 
     @staticmethod
     def _clock(value: object):
-        if not isinstance(value, str) or len(value) != 5:
-            raise InvalidRequest
-        try:
-            return datetime.strptime(value, "%H:%M").time()
-        except ValueError as error:
-            raise InvalidRequest from error
+        return _clock_from_value(value)
 
 
 class ControlHTTPServer(ThreadingHTTPServer):
