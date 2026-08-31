@@ -3,8 +3,10 @@ from __future__ import annotations
 import pytest
 
 from wificam_bridge.camera import (
+    DEFAULT_FRAME_TIMEOUT_SECONDS,
     G711_ALAW_FORMAT,
     CameraClient,
+    CameraError,
     CameraCredentials,
     MJPEGReassembler,
     VIDEO_MAX_QOS,
@@ -147,5 +149,59 @@ def test_camera_client_times_out_stalled_stream() -> None:
     client._session_prefix = b"0123456789abcdef0123456789abcdef"
     client._receive = lambda _deadline: []  # type: ignore[method-assign]
 
-    with pytest.raises(TimeoutError, match="no complete frame"):
+    with pytest.raises(TimeoutError, match="no activity"):
         next(client.frames())
+
+
+def test_camera_client_default_timeout_covers_observed_frame_gaps() -> None:
+    client = CameraClient(
+        "camera.invalid",
+        CameraCredentials(b"prefix", "user", "password"),
+    )
+
+    assert client.frame_timeout == DEFAULT_FRAME_TIMEOUT_SECONDS
+    assert client.frame_timeout >= 10.0
+
+
+def test_camera_client_keeps_video_session_alive_while_audio_arrives(monkeypatch) -> None:
+    client = CameraClient(
+        "camera.invalid",
+        CameraCredentials(b"prefix", "user", "password"),
+        frame_timeout=10.0,
+    )
+    client._socket = object()  # type: ignore[assignment]
+    client._session_prefix = b"0123456789abcdef0123456789abcdef"
+    audio_packet = AVPacket(
+        FixedHeader(6, 9, 0, False, 2),
+        False,
+        G711_ALAW_FORMAT,
+        0,
+        0,
+        10,
+        20,
+        0,
+        b"\x01\x00audio",
+    )
+    audio: list[bytes] = []
+    receives = 0
+    clock = 0.0
+
+    def monotonic() -> float:
+        nonlocal clock
+        clock += 3.0
+        return clock
+
+    def receive(_deadline):
+        nonlocal receives
+        receives += 1
+        if receives <= 4:
+            return [audio_packet]
+        raise CameraError("end of test stream")
+
+    monkeypatch.setattr("wificam_bridge.camera.time.monotonic", monotonic)
+    client._receive = receive  # type: ignore[method-assign]
+
+    with pytest.raises(CameraError, match="end of test stream"):
+        next(client.frames(audio_callback=audio.append))
+
+    assert audio == [b"audio"] * 4

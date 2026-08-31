@@ -39,7 +39,10 @@ MJPEG_FORMAT = 4
 G711_ALAW_FORMAT = 21
 G711_ALAW_SAMPLE_RATE = 8000
 G711_ALAW_TRANSPORT_PREFIX = b"\x01\x00"
-DEFAULT_FRAME_TIMEOUT_SECONDS = 2.0
+# The tested firmware can leave video idle for several seconds while audio
+# continues on the same socket. Keep enough margin for the measured 5.61 s gap
+# without delaying recovery from a genuinely stalled session indefinitely.
+DEFAULT_FRAME_TIMEOUT_SECONDS = 10.0
 
 
 @dataclass(slots=True)
@@ -327,15 +330,17 @@ class CameraClient:
         if self._socket is None or self._session_prefix is None:
             raise CameraError("camera is not connected")
         reassembler = MJPEGReassembler(self._session_prefix)
-        frame_deadline = time.monotonic() + self.frame_timeout
+        activity_deadline = time.monotonic() + self.frame_timeout
         try:
             while self._socket is not None:
                 if self._pending:
                     packets = [self._pending.popleft()]
                 else:
                     packets = self._receive(
-                        min(time.monotonic() + 2.0, frame_deadline)
+                        min(time.monotonic() + 2.0, activity_deadline)
                     )
+                if packets:
+                    activity_deadline = time.monotonic() + self.frame_timeout
                 for packet in packets:
                     if isinstance(packet, RPCPacket):
                         if packet.rpc_type == RPC_RESPONSE and self._resolve_pending(packet):
@@ -348,11 +353,10 @@ class CameraClient:
                                 audio_callback(audio)
                         frame = reassembler.push(packet)
                         if frame is not None:
-                            frame_deadline = time.monotonic() + self.frame_timeout
                             yield frame
-                if time.monotonic() >= frame_deadline:
+                if time.monotonic() >= activity_deadline:
                     raise TimeoutError(
-                        f"camera stream produced no complete frame for "
+                        f"camera stream produced no activity for "
                         f"{self.frame_timeout:g} seconds"
                     )
         finally:

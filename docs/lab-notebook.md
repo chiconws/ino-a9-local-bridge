@@ -137,6 +137,12 @@ archive provides the packet framing documented in `protocol.md`.
     first complete JPEG, so two seconds is the tested lower bound. A 90-second
     viewer test then received 498 frames on one unchanged HTTP connection with
     a maximum 5.61-second inter-frame gap.
+18. On 2026-08-31, the HAOS test deployment reproduced repeated temporary
+    `unavailable` entities: the two-second watchdog restarted the otherwise
+    healthy PPRPC session whenever one of those measured video gaps occurred.
+    The default watchdog is now ten seconds, retaining the one-second retry for
+    genuinely stalled sessions while avoiding unnecessary Home Assistant
+    availability transitions.
 
 ## Temporary components and cleanup
 

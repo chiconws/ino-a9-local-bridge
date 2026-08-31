@@ -256,9 +256,11 @@ Assistant config flows passed stream validation.
 - One camera connection feeds any number of local HTTP viewers; opening more
   dashboard views does not create more PPRPC sessions.
 - The worker reconnects after camera power or Wi-Fi interruptions. It also
-  declares a session stale after two seconds without a complete frame, then
-  retries after one second. Existing HTTP viewers remain connected and receive
-  new frames when the camera session recovers.
+  declares a session stale after ten seconds without any camera stream
+  activity, then retries after one second. This tolerates the tested firmware's
+  multi-second video pauses while its microphone remains active. Existing HTTP
+  viewers remain connected and receive new frames when the camera session
+  recovers.
 - The tested units normally emit roughly 10 frames per second at 640×480, but
   their firmware repeatedly stops the video channel. A controlled trace showed
   fresh microphone packets continuing on the same socket while video was
