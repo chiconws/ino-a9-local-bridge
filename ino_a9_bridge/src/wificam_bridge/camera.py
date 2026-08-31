@@ -6,6 +6,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 import socket
 import string
+from threading import Event, Lock
 import time
 from typing import Callable, Iterator
 
@@ -39,6 +40,13 @@ G711_ALAW_FORMAT = 21
 G711_ALAW_SAMPLE_RATE = 8000
 G711_ALAW_TRANSPORT_PREFIX = b"\x01\x00"
 DEFAULT_FRAME_TIMEOUT_SECONDS = 2.0
+
+
+@dataclass(slots=True)
+class _PendingCommand:
+    event: Event
+    response: RPCPacket | None = None
+    error: Exception | None = None
 
 
 class CameraError(RuntimeError):
@@ -236,6 +244,8 @@ class CameraClient:
         port: int = 20190,
         connect_timeout: float = 5.0,
         frame_timeout: float = DEFAULT_FRAME_TIMEOUT_SECONDS,
+        control_timeout: float | None = None,
+        socket_factory: Callable[[tuple[str, int], float], socket.socket] | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -244,18 +254,28 @@ class CameraClient:
         if frame_timeout <= 0:
             raise ValueError("frame_timeout must be positive")
         self.frame_timeout = frame_timeout
+        if control_timeout is not None and control_timeout <= 0:
+            raise ValueError("control_timeout must be positive")
+        self.control_timeout = connect_timeout if control_timeout is None else control_timeout
+        self.socket_factory = socket.create_connection if socket_factory is None else socket_factory
         self._socket: socket.socket | None = None
         self._buffer = b""
         self._pending: deque[RPCPacket | AVPacket | RawPacket] = deque()
         self._session_prefix: bytes | None = None
+        self._send_lock = Lock()
+        self._sequence_lock = Lock()
+        self._pending_commands_lock = Lock()
+        self._pending_commands: dict[tuple[int, int], _PendingCommand] = {}
+        self._next_sequence = 5
 
     def connect(self) -> None:
         self.close()
-        sock = socket.create_connection((self.host, self.port), timeout=self.connect_timeout)
+        sock = self.socket_factory((self.host, self.port), self.connect_timeout)
         sock.settimeout(1.0)
         self._socket = sock
         self._buffer = b""
         self._pending.clear()
+        self._next_sequence = 5
         try:
             self._send_request(1, LAN_AUTH_COMMAND, build_lan_auth_request(self.credentials))
             auth = self._wait_response(1, LAN_AUTH_COMMAND)
@@ -308,30 +328,35 @@ class CameraClient:
             raise CameraError("camera is not connected")
         reassembler = MJPEGReassembler(self._session_prefix)
         frame_deadline = time.monotonic() + self.frame_timeout
-        while self._socket is not None:
-            if self._pending:
-                packets = [self._pending.popleft()]
-            else:
-                packets = self._receive(
-                    min(time.monotonic() + 2.0, frame_deadline)
-                )
-            for packet in packets:
-                if isinstance(packet, RPCPacket):
-                    self._handle_rpc_request(packet)
-                elif isinstance(packet, AVPacket):
-                    if audio_callback is not None:
-                        audio = extract_g711_alaw_payload(packet)
-                        if audio is not None:
-                            audio_callback(audio)
-                    frame = reassembler.push(packet)
-                    if frame is not None:
-                        frame_deadline = time.monotonic() + self.frame_timeout
-                        yield frame
-            if time.monotonic() >= frame_deadline:
-                raise TimeoutError(
-                    f"camera stream produced no complete frame for "
-                    f"{self.frame_timeout:g} seconds"
-                )
+        try:
+            while self._socket is not None:
+                if self._pending:
+                    packets = [self._pending.popleft()]
+                else:
+                    packets = self._receive(
+                        min(time.monotonic() + 2.0, frame_deadline)
+                    )
+                for packet in packets:
+                    if isinstance(packet, RPCPacket):
+                        if packet.rpc_type == RPC_RESPONSE and self._resolve_pending(packet):
+                            continue
+                        self._handle_rpc_request(packet)
+                    elif isinstance(packet, AVPacket):
+                        if audio_callback is not None:
+                            audio = extract_g711_alaw_payload(packet)
+                            if audio is not None:
+                                audio_callback(audio)
+                        frame = reassembler.push(packet)
+                        if frame is not None:
+                            frame_deadline = time.monotonic() + self.frame_timeout
+                            yield frame
+                if time.monotonic() >= frame_deadline:
+                    raise TimeoutError(
+                        f"camera stream produced no complete frame for "
+                        f"{self.frame_timeout:g} seconds"
+                    )
+        finally:
+            self._fail_pending(CameraError("camera stream stopped"))
 
     def close(self) -> None:
         if self._socket is not None:
@@ -342,6 +367,7 @@ class CameraClient:
         self._session_prefix = None
         self._buffer = b""
         self._pending.clear()
+        self._fail_pending(CameraError("camera connection closed"))
 
     def __enter__(self) -> CameraClient:
         self.connect()
@@ -349,6 +375,61 @@ class CameraClient:
 
     def __exit__(self, *_: object) -> None:
         self.close()
+
+    def open_session(self, *, start_audio: bool = True):
+        """Create a media-and-controls session over this camera connection."""
+        from .session import CameraSession
+
+        return CameraSession(self, start_audio=start_audio)
+
+    def send_control(
+        self,
+        command_id: int,
+        payload: bytes = b"",
+        *,
+        timeout: float | None = None,
+    ) -> RPCPacket:
+        """Send one control command and wait for the background reader response."""
+        if not isinstance(command_id, int) or isinstance(command_id, bool) or command_id < 0:
+            raise ValueError("command_id must be a non-negative integer")
+        if not isinstance(payload, bytes):
+            raise TypeError("payload must be bytes")
+        wait_timeout = self.control_timeout if timeout is None else timeout
+        if not isinstance(wait_timeout, (int, float)) or wait_timeout <= 0:
+            raise ValueError("timeout must be positive")
+        sequence = self._allocate_sequence()
+        pending = _PendingCommand(Event())
+        key = (command_id, sequence)
+        with self._pending_commands_lock:
+            self._pending_commands[key] = pending
+        try:
+            self._send_request(sequence, command_id, payload)
+        except Exception:
+            with self._pending_commands_lock:
+                self._pending_commands.pop(key, None)
+            raise
+        if not pending.event.wait(wait_timeout):
+            with self._pending_commands_lock:
+                self._pending_commands.pop(key, None)
+            raise TimeoutError(f"camera did not answer control command {command_id}")
+        with self._pending_commands_lock:
+            self._pending_commands.pop(key, None)
+        if pending.error is not None:
+            raise pending.error
+        response = pending.response
+        if response is None:
+            raise CameraError("control command completed without a response")
+        if response.response_code != 0:
+            raise CameraError(f"command {command_id} returned code {response.response_code}")
+        return response
+
+    def send_command(self, command_id: int, payload: bytes = b"") -> None:
+        """Send a fire-and-forget camera command."""
+        if not isinstance(command_id, int) or isinstance(command_id, bool) or command_id < 0:
+            raise ValueError("command_id must be a non-negative integer")
+        if not isinstance(payload, bytes):
+            raise TypeError("payload must be bytes")
+        self._send_request(self._allocate_sequence(), command_id, payload)
 
     def _send_request(self, sequence: int, command_id: int, plaintext: bytes) -> None:
         self._send(
@@ -361,9 +442,10 @@ class CameraClient:
         )
 
     def _send(self, data: bytes) -> None:
-        if self._socket is None:
-            raise CameraError("camera socket is closed")
-        self._socket.sendall(data)
+        with self._send_lock:
+            if self._socket is None:
+                raise CameraError("camera socket is closed")
+            self._socket.sendall(data)
 
     def _wait_response(self, sequence: int, command_id: int) -> RPCPacket:
         deadline = time.monotonic() + self.connect_timeout
@@ -436,6 +518,29 @@ class CameraClient:
             if packets:
                 return packets
         return []
+
+    def _allocate_sequence(self) -> int:
+        with self._sequence_lock:
+            sequence = self._next_sequence
+            self._next_sequence += 1
+            return sequence
+
+    def _resolve_pending(self, packet: RPCPacket) -> bool:
+        with self._pending_commands_lock:
+            pending = self._pending_commands.get((packet.command_id, packet.sequence))
+        if pending is None:
+            return False
+        pending.response = packet
+        pending.event.set()
+        return True
+
+    def _fail_pending(self, error: Exception) -> None:
+        with self._pending_commands_lock:
+            pending = tuple(self._pending_commands.values())
+            self._pending_commands.clear()
+        for command in pending:
+            command.error = error
+            command.event.set()
 
 
 def _first_varint_field(payload: bytes, *, field_number: int) -> int:
