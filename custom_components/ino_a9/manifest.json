@@ -7,7 +7,7 @@
   "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/chiconws/ino-a9-local-bridge/issues",
-  "single_config_entry": true,
   "requirements": [],
+  "single_config_entry": true,
   "version": "0.1.0"
 }

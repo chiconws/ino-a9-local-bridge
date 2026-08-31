@@ -1,10 +1,14 @@
 set_intrusion_schedule:
   name: Set intrusion schedule
   description: Set the enabled state and weekly schedule of one INO-A9 camera.
-  target:
-    device:
-      integration: ino_a9
   fields:
+    device_id:
+      name: Camera
+      description: INO-A9 camera device to configure.
+      required: true
+      selector:
+        device:
+          integration: ino_a9
     enabled:
       name: Enabled
       description: Enable or disable intrusion detection.
