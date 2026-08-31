@@ -69,7 +69,6 @@ jobs:
               Path("custom_components/ino_a9/manifest.json").read_text()
           )
           assert app["slug"] == "ino_a9_bridge"
-          assert app["image"] == "ghcr.io/chiconws/ino-a9-local-bridge"
           assert app["arch"] == ["amd64", "aarch64"]
           assert app["discovery"] == ["ino_a9"]
           assert integration["domain"] == "ino_a9"

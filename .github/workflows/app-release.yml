@@ -17,9 +17,9 @@ jobs:
       image_name: ${{ steps.normalize.outputs.image_name }}
       registry_prefix: ${{ steps.normalize.outputs.registry_prefix }}
       version: ${{ steps.info.outputs.version }}
-      name: ${{ steps.info.outputs.name }}
-      description: ${{ steps.info.outputs.description }}
-      url: ${{ steps.info.outputs.url }}
+      name: ${{ steps.normalize.outputs.name }}
+      description: ${{ steps.normalize.outputs.description }}
+      url: ${{ steps.normalize.outputs.url }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -33,9 +33,11 @@ jobs:
       - name: Normalize image name
         id: normalize
         run: |
-          image=${{ steps.info.outputs.image }}
-          echo "image_name=${image##*/}" >> "$GITHUB_OUTPUT"
-          echo "registry_prefix=${image%/*}" >> "$GITHUB_OUTPUT"
+          echo "image_name=ino-a9-local-bridge" >> "$GITHUB_OUTPUT"
+          echo "registry_prefix=ghcr.io/chiconws" >> "$GITHUB_OUTPUT"
+          echo "name=INO-A9 Local Bridge" >> "$GITHUB_OUTPUT"
+          echo "description=Local INO-A9 camera bridge with audio-capable RTSP streams" >> "$GITHUB_OUTPUT"
+          echo "url=https://github.com/chiconws/ino-a9-local-bridge" >> "$GITHUB_OUTPUT"
 
       - name: Prepare architecture matrix
         id: matrix

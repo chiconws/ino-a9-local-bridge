@@ -35,12 +35,15 @@ the app there. Install the `INO-A9 Local Bridge` integration from HACS by adding
 this repository as a custom integration repository, or copy
 `custom_components/ino_a9/` into the Home Assistant `custom_components`
 directory. The app image is published for `amd64` and `aarch64` when a GitHub
-release is published. For local app development, add the repository as a local
-app source and use the Supervisor's forced rebuild command when the app has an
-`image` field:
+directory. The current branch intentionally uses a local Supervisor build so it
+can be tested before its first container release. The release workflow is ready
+to publish `amd64` and `aarch64` images to GHCR; after that image is reviewed and
+published, the `image` field can be enabled in `ino_a9_bridge/config.yaml`.
+For local app development, add the repository as a local app source and rebuild
+the app from that source:
 
 ```bash
-ha apps rebuild local_ino_a9_bridge --force
+ha apps rebuild local_ino_a9_bridge
 ```
 
 ## Private configuration
