@@ -124,6 +124,28 @@ def test_control_update_persists_nonsecret_value_and_camera_readback_wins(api) -
     assert camera.calls == [("night", "enabled"), ("night_get", None), ("flip_get", None)]
 
 
+def test_detail_keeps_camera_available_when_control_readback_fails(api) -> None:
+    server, camera, state = api
+    state.set("front", "night_vision", "enabled")
+    camera.failure = CameraError("rejected")
+
+    status, detail = _request(
+        server,
+        "GET",
+        "/api/v1/cameras/front",
+        token="test-token",
+    )
+
+    assert status == 200
+    assert detail["connected"] is True
+    assert detail["controls"]["night_vision"] == {
+        "value": "enabled", "known": True, "source": "persisted"
+    }
+    assert detail["controls"]["flip"] == {
+        "value": None, "known": False, "source": "unknown"
+    }
+
+
 def test_state_store_discards_unknown_preexisting_values(tmp_path: Path) -> None:
     path = tmp_path / "control_state.json"
     path.write_text(

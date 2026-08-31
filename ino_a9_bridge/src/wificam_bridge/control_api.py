@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import logging
 import os
 from pathlib import Path
 import secrets
@@ -22,6 +24,7 @@ from .session import CameraUnavailable
 
 
 PERSISTED_CONTROLS = ("led", "night_vision", "flip", "video_quality", "motion", "intrusion")
+LOGGER = logging.getLogger("wificam_bridge.control_api")
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,10 +205,38 @@ class ControlAPI:
         connected = bool(status.get("connected"))
         controls = self._control_values(camera_id)
         if connected:
-            controls["night_vision"] = self._known(camera.get_night_vision(), "readback")
-            controls["flip"] = self._known(camera.get_flip(), "readback")
+            controls["night_vision"] = self._safe_readback(
+                camera_id,
+                "night_vision",
+                camera.get_night_vision,
+                controls["night_vision"],
+            )
+            controls["flip"] = self._safe_readback(
+                camera_id,
+                "flip",
+                camera.get_flip,
+                controls["flip"],
+            )
         media = {key: value for key, value in status.items() if key != "connected"}
         return {"id": camera_id, "connected": connected, "media": media, "controls": controls}
+
+    @staticmethod
+    def _safe_readback(
+        camera_id: str,
+        control: str,
+        getter: Callable[[], object],
+        fallback: dict[str, object],
+    ) -> dict[str, object]:
+        try:
+            return ControlAPI._known(getter(), "readback")
+        except (TimeoutError, CameraError) as error:
+            LOGGER.warning(
+                "camera %s %s readback failed: %s",
+                camera_id,
+                control,
+                f"{type(error).__name__}: {error}",
+            )
+            return fallback
 
     def _update_control(self, camera_id: str, camera, control: str, body: dict[str, object]) -> dict[str, object]:
         if control == "led":
