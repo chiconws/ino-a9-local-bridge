@@ -11,7 +11,7 @@ homeassistant: "2026.6.0"
 init: false
 startup: application
 discovery:
-  - ino_a9_bridge
+  - ino_a9
 options:
   log_level: info
   cameras: []

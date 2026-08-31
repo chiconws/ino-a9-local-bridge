@@ -145,7 +145,7 @@ def test_register_discovery_publishes_internal_endpoints_and_token(
         (
             "/discovery",
             {
-                "service": "ino_a9_bridge",
+                "service": "ino_a9",
                 "config": {
                     "host": "local-ino-a9-bridge",
                     "http_port": 8080,

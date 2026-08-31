@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "ino_a9"
-APP_DISCOVERY_SERVICE = "ino_a9_bridge"
+APP_DISCOVERY_SERVICE = "ino_a9"
 API_VERSION = "v1"
 CONF_HOST = "host"
 CONF_HTTP_PORT = "http_port"

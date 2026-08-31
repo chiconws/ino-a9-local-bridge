@@ -25,7 +25,7 @@ CONTROL_TOKEN_FILENAME = "control_token"
 CONTROL_STATE_FILENAME = "control_state.json"
 BRIDGE_CONFIG_FILENAME = "bridge.json"
 GO2RTC_CONFIG_FILENAME = "go2rtc.yaml"
-DISCOVERY_SERVICE = "ino_a9_bridge"
+DISCOVERY_SERVICE = "ino_a9"
 LOG_LEVELS = {"debug", "info", "warning", "error"}
 
 
