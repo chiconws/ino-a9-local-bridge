@@ -153,14 +153,14 @@ def test_camera_client_times_out_stalled_stream() -> None:
         next(client.frames())
 
 
-def test_camera_client_default_timeout_covers_observed_frame_gaps() -> None:
+def test_camera_client_default_timeout_keeps_video_recovery_short() -> None:
     client = CameraClient(
         "camera.invalid",
         CameraCredentials(b"prefix", "user", "password"),
     )
 
+    assert DEFAULT_FRAME_TIMEOUT_SECONDS == 2.0
     assert client.frame_timeout == DEFAULT_FRAME_TIMEOUT_SECONDS
-    assert client.frame_timeout >= 10.0
 
 
 def test_camera_client_refreshes_video_session_while_audio_arrives(monkeypatch) -> None:

@@ -39,10 +39,11 @@ MJPEG_FORMAT = 4
 G711_ALAW_FORMAT = 21
 G711_ALAW_SAMPLE_RATE = 8000
 G711_ALAW_TRANSPORT_PREFIX = b"\x01\x00"
-# The tested firmware can leave video idle for several seconds while audio
-# continues on the same socket. Keep enough margin for the measured 5.61 s gap
-# without delaying recovery from a genuinely stalled session indefinitely.
-DEFAULT_FRAME_TIMEOUT_SECONDS = 10.0
+# The tested firmware can leave video idle while audio continues on the same
+# socket. Two seconds is the lowest value that still lets a fresh session
+# deliver its first complete JPEG; it keeps recovery short for existing
+# viewers, while CameraState's separate grace window prevents HA flapping.
+DEFAULT_FRAME_TIMEOUT_SECONDS = 2.0
 
 
 @dataclass(slots=True)

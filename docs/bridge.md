@@ -256,7 +256,7 @@ Assistant config flows passed stream validation.
 - One camera connection feeds any number of local HTTP viewers; opening more
   dashboard views does not create more PPRPC sessions.
 - The worker reconnects after camera power or Wi-Fi interruptions. It also
-  refreshes the session after ten seconds without a complete video frame, then
+  refreshes the session after two seconds without a complete video frame, then
   retries after one second. Audio and other PPRPC packets keep the socket's
   activity watchdog alive during a video pause, while the frame watchdog still
   refreshes a stalled video channel. During a short reconnect, the API keeps
