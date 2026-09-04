@@ -36,9 +36,10 @@ The app generates private files below `/data` at startup:
 - `control_state.json` retains non-secret, per-camera last-command state.
 
 The Python bridge listens on internal port 8080. go2rtc's API is loopback-only
-on 1984, and RTSP listens on internal port 8554. No host ports are published by
-this app. The custom integration discovers the app through Supervisor and
-consumes the private discovery token when it calls this API.
+on 1984. RTSP listens on internal port 8554 and is published as host port 8554;
+this is the only host port published by the app. The custom integration
+discovers the app through Supervisor and consumes the private discovery token
+when it calls this API.
 
 ## Control API
 
@@ -63,6 +64,16 @@ For a configured `front_door`, the stable audio-capable RTSP stream is:
 ```text
 rtsp://<discovered-app-host>:8554/ino_a9_front_door
 ```
+
+For a different Home Assistant instance on the same LAN, use the Home
+Assistant OS host address instead of the internal app hostname, for example:
+
+```text
+rtsp://192.168.1.82:8554/ino_a9_front_door
+```
+
+Keep port 8554 restricted to the trusted LAN because the RTSP endpoint has no
+authentication.
 
 ## Reproducible image choices
 

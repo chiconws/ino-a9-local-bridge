@@ -8,7 +8,7 @@ import yaml
 APP_DIR = Path(__file__).parents[1]
 
 
-def test_app_manifest_exposes_only_internal_runtime_interfaces() -> None:
+def test_app_manifest_publishes_rtsp_only() -> None:
     config = yaml.safe_load((APP_DIR / "config.yaml").read_text(encoding="utf-8"))
 
     assert config["slug"] == "ino_a9_bridge"
@@ -16,7 +16,8 @@ def test_app_manifest_exposes_only_internal_runtime_interfaces() -> None:
     assert config["homeassistant"] == "2026.6.0"
     assert config["init"] is False
     assert config["discovery"] == ["ino_a9"]
-    assert config.get("ports", {}) == {}
+    assert config["ports"] == {"8554/tcp": 8554}
+    assert config["ports_description"]["8554/tcp"] == "RTSP camera stream"
     assert config["schema"]["cameras"] == [
         {
             "name": "match(^[A-Za-z0-9_-]+$)",
