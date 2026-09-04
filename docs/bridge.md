@@ -29,16 +29,17 @@ state, sorted weekdays (Monday `0` through Sunday `6`), and a non-crossing
 minute-precision time interval. Keep the camera Internet block in place; the
 app needs only local TCP access to camera port `20190`.
 
-For a published release, add this repository URL under **Settings → Add-ons →
-Add-on store → ⋮ → Repositories**, install `INO-A9 Local Bridge`, and configure
-the app there. Install the `INO-A9 Local Bridge` integration from HACS by adding
-this repository as a custom integration repository, or copy
-`custom_components/ino_a9/` into the Home Assistant `custom_components`
-directory. The app image is published for `amd64` and `aarch64` when a GitHub
-directory. The current branch intentionally uses a local Supervisor build so it
-can be tested before its first container release. The release workflow is ready
-to publish `amd64` and `aarch64` images to GHCR; after that image is reviewed and
-published, the `image` field can be enabled in `ino_a9_bridge/config.yaml`.
+For a published app version, add this repository URL under **Settings → Add-ons
+→ Add-on store → ⋮ → Repositories**, install `INO-A9 Local Bridge`, and configure
+the app there. The app release channel uses tags named `app-v<version>`; the
+workflow publishes the matching `amd64` and `aarch64` images to GHCR.
+
+Install the `INO-A9 Local Bridge` integration from HACS by adding this repository
+as a custom integration repository, or copy `custom_components/ino_a9/` into the
+Home Assistant `custom_components` directory. The integration release channel
+uses published GitHub Releases named `v<version>`, which are the releases HACS
+tracks. Do not publish an `app-v*` tag as a GitHub Release, because HACS would
+interpret it as a new integration version.
 For local app development, add the repository as a local app source and rebuild
 the app from that source:
 

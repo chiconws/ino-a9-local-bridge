@@ -95,6 +95,10 @@ The integration also exposes `ino_a9.set_intrusion_schedule` for a targeted
 camera device. Keep the camera's Internet-deny rule in place; the app only
 needs local access to TCP port 20190 on each camera.
 
+The app and integration use independent release channels. App images are
+published from `app-v<version>` tags, while HACS tracks only published GitHub
+Releases named `v<version>` for the integration.
+
 ## Development
 
 Requires Python 3.11 or newer.
