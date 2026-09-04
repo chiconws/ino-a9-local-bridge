@@ -24,6 +24,14 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
+      - name: Read app version
+        id: app_metadata
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version: *"\([^"]*\)"/\1/p' ino_a9_bridge/config.yaml)"
+          test -n "${version}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -39,5 +47,5 @@ jobs:
           push: false
           tags: local/ino-a9-local-bridge:${{ github.sha }}-${{ matrix.arch }}
           build-args: |
-            BUILD_VERSION=0.4.0
+            BUILD_VERSION=${{ steps.app_metadata.outputs.version }}
             BUILD_ARCH=${{ matrix.arch }}

@@ -11,7 +11,11 @@ APP_DIR = Path(__file__).parents[1]
 def test_app_manifest_publishes_rtsp_only() -> None:
     config = yaml.safe_load((APP_DIR / "config.yaml").read_text(encoding="utf-8"))
 
+    assert config["name"] == "INO-A9 Local Bridge"
+    assert config["version"] == "0.4.2"
     assert config["slug"] == "ino_a9_bridge"
+    assert config["image"] == "ghcr.io/chiconws/ino-a9-local-bridge"
+    assert config["url"].endswith("/tree/main/ino_a9_bridge")
     assert config["arch"] == ["amd64", "aarch64"]
     assert config["homeassistant"] == "2026.6.0"
     assert config["init"] is False
