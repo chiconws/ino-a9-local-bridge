@@ -44,6 +44,7 @@ G711_ALAW_TRANSPORT_PREFIX = b"\x01\x00"
 # deliver its first complete JPEG; it keeps recovery short for existing
 # viewers, while CameraState's separate grace window prevents HA flapping.
 DEFAULT_FRAME_TIMEOUT_SECONDS = 2.0
+HEARTBEAT_INTERVAL_SECONDS = 0.5
 
 
 @dataclass(slots=True)
@@ -105,6 +106,21 @@ def build_time_sync_response(request_payload: bytes, *, now_ms: int | None = Non
         + encode_protobuf_varint(2, -30)
         + encode_protobuf_varint(3, current)
     )
+
+
+def build_time_request_payload(now_ms: int, *, ans_seq: int | None = None) -> bytes:
+    """Build the client heartbeat and optionally acknowledge the latest AV packet."""
+    if not isinstance(now_ms, int) or isinstance(now_ms, bool) or now_ms < 0:
+        raise ValueError("now_ms must be a non-negative integer")
+    if ans_seq is not None and (
+        not isinstance(ans_seq, int) or isinstance(ans_seq, bool) or ans_seq < 0
+    ):
+        raise ValueError("ans_seq must be a non-negative integer")
+
+    payload = encode_protobuf_varint(1, now_ms)
+    if ans_seq is not None:
+        payload += encode_protobuf_varint(4, ans_seq)
+    return payload
 
 
 def pack_rpc(
@@ -333,13 +349,26 @@ class CameraClient:
         reassembler = MJPEGReassembler(self._session_prefix)
         activity_deadline = time.monotonic() + self.frame_timeout
         frame_deadline = activity_deadline
+        next_heartbeat = time.monotonic() + HEARTBEAT_INTERVAL_SECONDS
+        latest_av_sequence: int | None = None
         try:
             while self._socket is not None:
+                now = time.monotonic()
+                if now >= next_heartbeat:
+                    self._send_request(
+                        self._allocate_sequence(),
+                        TIME_SYNC_COMMAND,
+                        build_time_request_payload(
+                            int(time.time() * 1000),
+                            ans_seq=latest_av_sequence,
+                        ),
+                    )
+                    next_heartbeat = now + HEARTBEAT_INTERVAL_SECONDS
                 if self._pending:
                     packets = [self._pending.popleft()]
                 else:
                     packets = self._receive(
-                        min(time.monotonic() + 2.0, activity_deadline)
+                        min(time.monotonic() + 2.0, activity_deadline, next_heartbeat)
                     )
                 if packets:
                     activity_deadline = time.monotonic() + self.frame_timeout
@@ -349,6 +378,8 @@ class CameraClient:
                             continue
                         self._handle_rpc_request(packet)
                     elif isinstance(packet, AVPacket):
+                        if latest_av_sequence is None or packet.sequence > latest_av_sequence:
+                            latest_av_sequence = packet.sequence
                         if audio_callback is not None:
                             audio = extract_g711_alaw_payload(packet)
                             if audio is not None:

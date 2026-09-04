@@ -201,7 +201,8 @@ Point the card's `entity` at `camera.ino_a9_camera_1_preview` while leaving its
 tap action pointed at the audio-capable entity. The preview is a continuous
 MJPEG response capped at 1 FPS and uses about one tenth of the
 bridge-to-dashboard bandwidth of the tested 10 FPS stream. It does not prevent
-pauses originating in the camera firmware.
+pauses caused by a downstream viewer or change the camera-to-bridge protocol
+pacing; all viewers share the same acknowledged PPRPC session.
 
 Use the dedicated MJPEG integration rather than putting the multipart URL in
 Generic Camera's Stream Source field. Current Home Assistant releases can route
@@ -220,8 +221,8 @@ need a stream containing both compatible video and audio. The included
 - G.711 A-law is resampled and transcoded to mono Opus;
 - both producers start only while the RTSP stream has a consumer;
 - `-re` paces the headerless audio source, whose bytes carry no timestamps;
-- the FFmpeg producer timeout is 30 seconds so a firmware pause does not make
-  go2rtc discard the source before the bridge recovers it.
+- the FFmpeg producer timeout is 30 seconds so a temporary media gap does not
+  make go2rtc discard the source before the bridge recovers it.
 
 The syntax follows go2rtc's
 [FFmpeg source](https://github.com/AlexxIT/go2rtc/blob/master/internal/ffmpeg/README.md)
@@ -263,16 +264,13 @@ Assistant config flows passed stream validation.
   recent media available for 15 seconds so Home Assistant entities do not
   flap; a connection with no recent activity is eventually reported as
   unavailable.
-- The tested units normally emit roughly 10 frames per second at 640×480, but
-  their firmware repeatedly stops the video channel. A controlled trace showed
-  fresh microphone packets continuing on the same socket while video was
-  absent, which rules out a total Wi-Fi or PPRPC connection loss. The shorter
-  watchdog masks most of that firmware outage but cannot prevent the camera-side
-  stop itself.
-- A 90-second continuity test from the Home Assistant host received 498 frames
-  through one unchanged HTTP connection while several camera sessions
-  recovered. The largest inter-frame gap was 5.61 seconds; no viewer reconnect
-  or reload was required.
+- The reader sends an encrypted command-107 keepalive every 500 ms and includes
+  the latest AV sequence in protobuf field 4. That acknowledgement is required
+  to keep the camera's media send window advancing; the two-second complete-frame
+  watchdog remains the fallback if a session genuinely stalls.
+- On 2026-09-04, the HAOS test app delivered 219 complete JPEGs in 45.7 seconds
+  through one unchanged HTTP connection. The largest inter-frame gap was 0.593
+  seconds, with no gap above two seconds and no probe errors.
 - A video-only 30-second observation measured about 0.64 Mbit/s of MJPEG
   payload. Allow roughly 0.8–1.0 Mbit/s per active camera for video plus local
   protocol/TCP/Wi-Fi overhead; MJPEG varies with scene complexity.

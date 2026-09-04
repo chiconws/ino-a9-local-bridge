@@ -146,6 +146,13 @@ archive provides the packet framing documented in `protocol.md`.
     API retains recent media availability for 15 seconds during the expected
     reconnect window, avoiding unnecessary Home Assistant availability
     transitions without hiding a prolonged outage.
+19. On 2026-09-04, comparison with the working standalone PPRPC client showed
+    that the bridge was missing the client-originated command-107 keepalive's
+    AV acknowledgement. The bridge now sends that request every 500 ms and
+    includes protobuf field 4 with the latest AV sequence. In the HAOS test,
+    the updated app delivered 219 complete JPEGs in 45.7 seconds; the maximum
+    inter-frame gap was 0.593 seconds, with no gap above two seconds and no
+    errors.
 
 ## Temporary components and cleanup
 

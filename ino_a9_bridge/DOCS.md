@@ -41,6 +41,12 @@ this is the only host port published by the app. The custom integration
 discovers the app through Supervisor and consumes the private discovery token
 when it calls this API.
 
+The PPRPC reader sends an encrypted command-107 keepalive every 500 ms. Once an
+AV packet has arrived, the request includes protobuf field 4 with the latest AV
+sequence, acknowledging media consumed by the bridge and allowing the camera to
+advance its send window. The two-second complete-frame watchdog remains a
+fallback for a genuinely stalled session.
+
 ## Control API
 
 `GET /health` is an unauthenticated health check. Every `/api/v1/...` request
