@@ -14,7 +14,10 @@ def test_app_release_workflow_runs_only_for_app_tags() -> None:
 
     assert '  push:\n    tags:\n      - "app-v*"' in workflow
     assert "  release:" not in workflow
-    assert 'expected_tag="app-v${APP_VERSION}"' in workflow
+    assert 'expected_tag="app-v${app_version}"' in workflow
+    assert 'app_version="${APP_VERSION#\\"}"' in workflow
+    assert 'app_version="${app_version%\\"}"' in workflow
+    assert 'echo "version=${app_version}" >> "$GITHUB_OUTPUT"' in workflow
 
 
 def test_validation_workflow_checks_published_integration_releases() -> None:

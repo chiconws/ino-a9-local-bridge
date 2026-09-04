@@ -17,7 +17,7 @@ jobs:
       build_matrix: ${{ steps.matrix.outputs.matrix }}
       image_name: ${{ steps.normalize.outputs.image_name }}
       registry_prefix: ${{ steps.normalize.outputs.registry_prefix }}
-      version: ${{ steps.info.outputs.version }}
+      version: ${{ steps.validate_tag.outputs.version }}
       name: ${{ steps.normalize.outputs.name }}
       description: ${{ steps.normalize.outputs.description }}
       url: ${{ steps.normalize.outputs.url }}
@@ -32,15 +32,19 @@ jobs:
           path: ./ino_a9_bridge
 
       - name: Validate app release tag
+        id: validate_tag
         env:
           APP_VERSION: ${{ steps.info.outputs.version }}
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          expected_tag="app-v${APP_VERSION}"
+          app_version="${APP_VERSION#\"}"
+          app_version="${app_version%\"}"
+          expected_tag="app-v${app_version}"
           if [ "${TAG_NAME}" != "${expected_tag}" ]; then
-            echo "::error::tag '${TAG_NAME}' does not match app version '${APP_VERSION}' (expected '${expected_tag}')"
+            echo "::error::tag '${TAG_NAME}' does not match app version '${app_version}' (expected '${expected_tag}')"
             exit 1
           fi
+          echo "version=${app_version}" >> "$GITHUB_OUTPUT"
 
       - name: Normalize image name
         id: normalize
